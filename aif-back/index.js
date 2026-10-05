@@ -5,7 +5,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(root, "../aif/.env.local") });
 dotenv.config({ path: path.join(root, ".env") });
 
 const { corsMiddleware } = await import("./middleware/cors.js");
@@ -39,4 +38,4 @@ app.listen(port, () => {
   console.log(`AIF API listening on http://localhost:${port}`);
 });
 
-module.exports=app;
+export default app;

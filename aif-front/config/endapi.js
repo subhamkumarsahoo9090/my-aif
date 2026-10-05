@@ -1,6 +1,8 @@
-// Screens call the Node.js API in /server. MongoDB is configured in .env.local.
+// Screens call the Node.js API in /server. The base URL is NEXT_PUBLIC_API_ORIGIN in .env.local.
 
-export const apiOrigin = "http://localhost:4000";
+const configuredOrigin = process.env.NEXT_PUBLIC_API_ORIGIN?.trim().replace(/\/$/, "");
+
+export const apiOrigin = configuredOrigin ;
 
 function route(path) {
   return `${apiOrigin}${path}`;

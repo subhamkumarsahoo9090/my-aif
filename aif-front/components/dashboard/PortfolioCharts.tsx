@@ -75,6 +75,7 @@ function TrendChart({ points }: { points: Point[] }) {
   const min = Math.min(...values);
   const max = Math.max(...values);
   const span = max - min || 1;
+  const ticks = min === max ? [min] : [max, min + (max - min) / 2, min];
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
   const coords = points.map((point, index) => {
@@ -83,14 +84,13 @@ function TrendChart({ points }: { points: Point[] }) {
     return { ...point, x, y };
   });
   const line = coords.map((point) => `${point.x},${point.y}`).join(" ");
-  const ticks = [max, min + span / 2, min];
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="mt-3 h-56 w-full" role="img" aria-label="Portfolio valuation trend">
-      {ticks.map((tick) => {
+      {ticks.map((tick, index) => {
         const y = pad.top + (1 - (tick - min) / span) * innerH;
         return (
-          <g key={tick}>
+          <g key={`${index}-${tick}`}>
             <line x1={pad.left} x2={width - pad.right} y1={y} y2={y} stroke="var(--pm-border)" />
             <text x={pad.left - 8} y={y + 4} textAnchor="end" fontSize="11" fill="var(--pm-muted)">
               {formatAxis(tick)}

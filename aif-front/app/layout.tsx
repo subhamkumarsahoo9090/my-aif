@@ -41,7 +41,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full">
-      <body className="flex min-h-full flex-col bg-background font-sans text-foreground antialiased">
+      <body
+        suppressHydrationWarning
+        className="flex min-h-full flex-col bg-background font-sans text-foreground antialiased"
+      >
         <style dangerouslySetInnerHTML={{ __html: themeVariablesCss() }} />
         <GoogleAnalytics />
         <AppProvider>{children}</AppProvider>

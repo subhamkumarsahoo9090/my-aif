@@ -59,7 +59,7 @@ export const interviewTopics: InterviewTopic[] = [
     label: "MongoDB",
     summary: "MongoDB Atlas stores the fund records. The connection lives in server/mongo.js.",
     here: [
-      "The connection string is MONGODB_URI in aif/.env.local.",
+      "The connection string is MONGODB_URI in server/.env.",
       "The database name is aif_wealthdiscovery.",
       "Collections hold investors, staff, securities, and platform state, including NAV history.",
       "If local DNS cannot resolve Atlas, the driver retries through public DNS.",
@@ -168,8 +168,8 @@ export const interviewTopics: InterviewTopic[] = [
     label: "Environment",
     summary: "Secrets and machine settings stay in env files. The code reads them at startup.",
     here: [
-      "aif/.env.local holds MONGODB_URI and MONGODB_DB.",
-      "server/.env holds CORS_ORIGIN.",
+      "server/.env holds MONGODB_URI, MONGODB_DB, and CORS_ORIGIN.",
+      "aif/.env.local holds NEXT_PUBLIC_API_ORIGIN, the API base URL the screens call.",
       "Both files load before the routes, so the first request already sees them.",
       "Example files list the keys without real secrets.",
     ],

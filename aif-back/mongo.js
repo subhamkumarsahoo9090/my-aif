@@ -13,7 +13,7 @@ const globalStore = globalThis;
 function uri() {
   const value = process.env.MONGODB_URI;
   if (!value) {
-    throw new Error("MONGODB_URI is missing. Add it to aif/.env.local.");
+    throw new Error("MONGODB_URI is missing. Add it to server/.env.");
   }
   return value;
 }
