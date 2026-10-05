@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-primary: var(--pm-primary);
+  --color-primary-hover: var(--pm-primary-hover);
+  --color-background: var(--pm-background);
+  --color-surface: var(--pm-surface);
+  --color-foreground: var(--pm-text);
+  --color-muted: var(--pm-muted);
+  --color-border: var(--pm-border);
+  --color-danger: var(--pm-danger);
+  --color-button: var(--pm-button-bg);
+  --color-button-text: var(--pm-button-color);
+  --color-button-hover: var(--pm-button-hover);
+  --color-button-secondary: var(--pm-button-secondary-bg);
+  --color-button-secondary-text: var(--pm-button-secondary-color);
+  --color-button-secondary-border: var(--pm-button-secondary-border);
+  --color-button-secondary-hover: var(--pm-button-secondary-hover);
+  --font-sans: var(--pm-font-sans);
+  --text-xs: var(--pm-text-xs);
+  --text-xs--line-height: 1.4;
+  --text-sm: var(--pm-text-sm);
+  --text-sm--line-height: 1.45;
+  --text-base: var(--pm-text-base);
+  --text-base--line-height: 1.5;
+  --text-lg: var(--pm-text-lg);
+  --text-lg--line-height: 1.5;
+  --text-xl: var(--pm-text-xl);
+  --text-xl--line-height: 1.4;
+  --text-2xl: var(--pm-text-2xl);
+  --text-2xl--line-height: 1.3;
+  --text-3xl: var(--pm-text-3xl);
+  --text-3xl--line-height: 1.2;
+  --animate-login-rise: login-rise 0.7s ease both;
+  --animate-login-float: login-float 4.5s ease-in-out infinite;
+  --animate-login-card: login-card 0.8s ease both;
+}
+
+@keyframes login-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes login-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes login-card {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-login-rise,
+  .animate-login-float,
+  .animate-login-card {
+    animation: none;
+  }
+}
+
+html,
+body,
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background: var(--pm-background);
+  color: var(--pm-text);
+  font-family: var(--pm-font-sans), system-ui, sans-serif;
+  font-size: var(--pm-text-base);
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--pm-text);
+  caret-color: var(--pm-text);
+  box-shadow: 0 0 0 1000px #f8fafc inset;
+  transition: background-color 9999s ease-out;
+}
