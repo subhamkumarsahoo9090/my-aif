@@ -1,6 +1,6 @@
-import { authorizePortal } from "../lib/guard.ts";
-import { currentNav } from "../lib/portal-store.ts";
-import { renderStatement } from "../lib/statement-pdf.ts";
+import { authorizePortal } from "../lib/guard.js";
+import { currentNav } from "../lib/portal-store.js";
+import { renderStatement } from "../lib/statement-pdf.js";
 import { denied, fail, ok } from "./result.js";
 
 function asRequest(req) {

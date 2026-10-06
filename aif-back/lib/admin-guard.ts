@@ -1,6 +1,6 @@
-import { getStaff, roleCan, staffVersion, type AdminRole, type AdminUser } from "@/lib/admin-store";
-import { jsonError } from "@/lib/http";
-import { readAdminSession } from "@/lib/session";
+import { getStaff, roleCan, staffVersion, type AdminRole, type AdminUser } from "./admin-store.js";
+import { jsonError } from "./http.js";
+import { readAdminSession } from "./session.js";
 
 export async function authorizeAdmin(minimum: AdminRole = "admin", moduleName?: string): Promise<
   | { user: AdminUser; response?: undefined }

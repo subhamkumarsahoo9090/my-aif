@@ -1,6 +1,6 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
-import { getDb } from "@/lib/mongo";
-import { identifierMatches } from "@/lib/identifier";
+import { getDb } from "./mongo.js";
+import { identifierMatches } from "./identifier.js";
 import type {
   BankAccount,
   Holding,
@@ -9,7 +9,7 @@ import type {
   LedgerType,
   Nominee,
   PortalData,
-} from "@/lib/types";
+} from "./types.js";
 
 type Account = {
   salt: string;

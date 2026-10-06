@@ -1,4 +1,4 @@
-import type { BankAccount, ClientStatus, InvestorProfile, Nominee } from "@/lib/types";
+import type { BankAccount, ClientStatus, InvestorProfile, Nominee } from "./types.js";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const personNamePattern = /^[A-Za-z][A-Za-z .'-]{1,79}$/;

@@ -1,5 +1,5 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
-import { getDb } from "@/lib/mongo";
+import { getDb } from "./mongo.js";
 import {
   addGeneratedStatement,
   getPortal,
@@ -14,9 +14,9 @@ import {
   ready,
   removeInvestor,
   updateClientProfile,
-} from "@/lib/portal-store";
-import type { AdminRole, AdminUser, ClientStatus, PortalData } from "@/lib/types";
-import { investorMatchScore, parseLedgerStatement } from "@/lib/ledger-statement";
+} from "./portal-store.js";
+import type { AdminRole, AdminUser, ClientStatus, PortalData } from "./types.js";
+import { investorMatchScore, parseLedgerStatement } from "./ledger-statement.js";
 
 export type { AdminRole, AdminUser };
 

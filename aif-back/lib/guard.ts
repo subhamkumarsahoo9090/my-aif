@@ -1,7 +1,7 @@
-import { jsonError } from "@/lib/http";
-import { getPortal } from "@/lib/portal-store";
-import { readSession } from "@/lib/session";
-import type { PortalData } from "@/lib/types";
+import { jsonError } from "./http.js";
+import { getPortal } from "./portal-store.js";
+import { readSession } from "./session.js";
+import type { PortalData } from "./types.js";
 
 export async function authorizePortal(request: Request): Promise<
   | { portal: PortalData; clientCode: string; response?: undefined }

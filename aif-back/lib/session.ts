@@ -1,6 +1,6 @@
 import { createHash, createHmac, randomInt, timingSafeEqual } from "crypto";
-import { requestContext, type CookieJar } from "@/lib/request-context";
-import { getPasswordVersion } from "@/lib/portal-store";
+import { requestContext, type CookieJar } from "./request-context.js";
+import { getPasswordVersion } from "./portal-store.js";
 
 const SESSION_COOKIE = "aif_session";
 const RESET_COOKIE = "aif_reset";

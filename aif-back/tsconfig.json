@@ -14,5 +14,5 @@
     }
   },
   "include": ["./**/*.ts", "./**/*.js"],
-  "exclude": ["node_modules", "dist", "index.js"]
+  "exclude": ["node_modules", "dist"]
 }

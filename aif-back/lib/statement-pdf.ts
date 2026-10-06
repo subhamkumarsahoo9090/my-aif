@@ -1,6 +1,6 @@
-import { formatDate, formatInrPlain } from "@/lib/format";
-import { buildPdf } from "@/lib/pdf";
-import type { PortalData, StatementMeta } from "@/lib/types";
+import { formatDate, formatInrPlain } from "./format.js";
+import { buildPdf } from "./pdf.js";
+import type { PortalData, StatementMeta } from "./types.js";
 
 export function renderStatement(portal: PortalData, statement: StatementMeta) {
   const { profile, metrics } = portal;
