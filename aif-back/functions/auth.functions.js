@@ -1,7 +1,7 @@
-import { authenticateStaff, deleteDirectoryAccount, directoryAccounts, noteStaffLogin } from "../../aif/lib/admin-store.ts";
-import { canonicalIdentifier } from "../../aif/lib/identifier.ts";
-import { passwordError } from "../../aif/lib/password.ts";
-import { authenticate, findClientCode, toSessionUser, updatePassword } from "../../aif/lib/portal-store.ts";
+import { authenticateStaff, deleteDirectoryAccount, directoryAccounts, noteStaffLogin } from "../lib/admin-store.ts";
+import { canonicalIdentifier } from "../lib/identifier.ts";
+import { passwordError } from "../lib/password.ts";
+import { authenticate, findClientCode, toSessionUser, updatePassword } from "../lib/portal-store.ts";
 import {
   clearReset,
   clearSession,
@@ -12,7 +12,7 @@ import {
   readVerifiedReset,
   startReset,
   verifyResetCode,
-} from "../../aif/lib/session.ts";
+} from "../lib/session.ts";
 import { fail, ok } from "./result.js";
 
 export async function login(body) {

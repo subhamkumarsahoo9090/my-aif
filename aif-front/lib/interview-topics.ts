@@ -28,7 +28,7 @@ export const interviewTopics: InterviewTopic[] = [
     label: "Middleware",
     summary: "Middleware runs before the route. Each layer can read the request, change it, or stop it.",
     here: [
-      "CORS checks the browser origin from server/.env.",
+      "CORS checks the browser origin from aif-back/.env.",
       "cookie-parser reads the session cookie.",
       "express.json accepts a JSON body up to 10mb, which covers CSV imports.",
       "Request context stores that cookie so login and portal calls share one session.",
@@ -57,9 +57,9 @@ export const interviewTopics: InterviewTopic[] = [
   {
     id: "mongodb",
     label: "MongoDB",
-    summary: "MongoDB Atlas stores the fund records. The connection lives in server/mongo.js.",
+    summary: "MongoDB Atlas stores the fund records. The connection lives in the API, in aif-back/mongo.js.",
     here: [
-      "The connection string is MONGODB_URI in server/.env.",
+      "The connection string is MONGODB_URI in aif-back/.env.",
       "The database name is aif_wealthdiscovery.",
       "Collections hold investors, staff, securities, and platform state, including NAV history.",
       "If local DNS cannot resolve Atlas, the driver retries through public DNS.",
@@ -91,7 +91,7 @@ export const interviewTopics: InterviewTopic[] = [
     label: "CORS",
     summary: "The frontend and the API are different origins. CORS says which site may call the API with cookies.",
     here: [
-      "CORS_ORIGIN is in server/.env, separate from the database file.",
+      "CORS_ORIGIN is in aif-back/.env, separate from the frontend.",
       "The usual local value is http://localhost:3000.",
       "Several origins can be listed, separated by commas.",
       "Cookies are allowed only for an origin on that list.",
@@ -168,8 +168,8 @@ export const interviewTopics: InterviewTopic[] = [
     label: "Environment",
     summary: "Secrets and machine settings stay in env files. The code reads them at startup.",
     here: [
-      "server/.env holds MONGODB_URI, MONGODB_DB, and CORS_ORIGIN.",
-      "aif/.env.local holds NEXT_PUBLIC_API_ORIGIN, the API base URL the screens call.",
+      "aif-back/.env holds MONGODB_URI, MONGODB_DB, and CORS_ORIGIN.",
+      "aif-front/.env.local holds NEXT_PUBLIC_API_ORIGIN, the API base URL the screens call.",
       "Both files load before the routes, so the first request already sees them.",
       "Example files list the keys without real secrets.",
     ],

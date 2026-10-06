@@ -1,5 +1,5 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
-import { getDb } from "../../server/mongo.js";
+import { getDb } from "@/lib/mongo";
 import { identifierMatches } from "@/lib/identifier";
 import type {
   BankAccount,

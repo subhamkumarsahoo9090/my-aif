@@ -33,9 +33,8 @@ function cookieOptions(maxAge: number) {
 
 async function readCookies(): Promise<CookieJar> {
   const current = requestContext.getStore();
-  if (current) return current;
-  const { cookies } = await import("next/headers");
-  return cookies();
+  if (!current) throw new Error("Request context is missing.");
+  return current;
 }
 
 function signToken(payload: TokenPayload) {

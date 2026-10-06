@@ -1,4 +1,4 @@
-// Screens call the Node.js API in /server. The base URL is NEXT_PUBLIC_API_ORIGIN in .env.local.
+// Screens call the API in aif-back. The base URL is NEXT_PUBLIC_API_ORIGIN in .env.local.
 
 const configuredOrigin = process.env.NEXT_PUBLIC_API_ORIGIN?.trim().replace(/\/$/, "");
 

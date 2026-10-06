@@ -1,10 +1,5 @@
 import dns from "node:dns";
-import { createRequire } from "node:module";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const appPackage = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "aif", "package.json");
-const { MongoClient } = createRequire(appPackage)("mongodb");
+import { MongoClient } from "mongodb";
 
 const databaseName = process.env.MONGODB_DB || "aif_wealthdiscovery";
 
@@ -13,7 +8,7 @@ const globalStore = globalThis;
 function uri() {
   const value = process.env.MONGODB_URI;
   if (!value) {
-    throw new Error("MONGODB_URI is missing. Add it to server/.env.");
+    throw new Error("MONGODB_URI is missing. Add it to aif-back/.env.");
   }
   return value;
 }

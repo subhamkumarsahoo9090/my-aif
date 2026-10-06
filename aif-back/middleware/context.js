@@ -1,4 +1,4 @@
-import { requestContext } from "../../aif/lib/request-context.ts";
+import { requestContext } from "../lib/request-context.ts";
 
 function cookieJar(req, res) {
   return {

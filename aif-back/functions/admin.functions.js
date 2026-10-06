@@ -28,10 +28,10 @@ import {
   updateStaff,
   listNav,
   saveNav,
-} from "../../aif/lib/admin-store.ts";
-import { authorizeAdmin } from "../../aif/lib/admin-guard.ts";
-import { openAdminSession, readAdminSession } from "../../aif/lib/session.ts";
-import { readCreateClientBody } from "../../aif/lib/client-validation.ts";
+} from "../lib/admin-store.ts";
+import { authorizeAdmin } from "../lib/admin-guard.ts";
+import { openAdminSession, readAdminSession } from "../lib/session.ts";
+import { readCreateClientBody } from "../lib/client-validation.ts";
 import { denied, fail, ok } from "./result.js";
 
 function text(body, key) {

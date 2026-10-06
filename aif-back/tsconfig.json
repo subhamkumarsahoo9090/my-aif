@@ -1,9 +1,16 @@
 {
-  "extends": "../aif/tsconfig.json",
   "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowJs": true,
+    "noEmit": true,
     "paths": {
-      "@/*": ["../aif/*"]
+      "@/*": ["./*"]
     }
   },
-  "include": ["../aif/**/*.ts", "../aif/**/*.tsx", "./**/*.js"]
+  "include": ["./**/*.ts", "./**/*.js"]
 }
