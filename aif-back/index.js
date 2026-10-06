@@ -21,6 +21,9 @@ app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(bindRequestContext);
 
+app.get("/", (_req, res) => {
+  res.json({ ok: true,message:"server running successfully" });
+});
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
 });
