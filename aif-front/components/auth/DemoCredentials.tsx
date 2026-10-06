@@ -62,7 +62,7 @@ export default function DemoCredentials() {
   }
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-0 z-30 flex justify-end px-6 pt-6 sm:px-8 lg:px-10">
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-30 hidden justify-end px-6 pt-6 sm:px-8 lg:flex lg:px-10">
       <div className="pointer-events-auto relative">
         <button
           type="button"
