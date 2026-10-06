@@ -22,10 +22,11 @@ function secret() {
 }
 
 function cookieOptions(maxAge: number) {
+  const crossSite = process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
   return {
     httpOnly: true,
-    sameSite: "lax" as const,
-    secure: process.env.NODE_ENV === "production",
+    sameSite: crossSite ? ("none" as const) : ("lax" as const),
+    secure: crossSite,
     path: "/",
     maxAge,
   };
@@ -73,17 +74,15 @@ function readToken(token: string | undefined): TokenPayload | null {
 
 export async function openSession(clientCode: string) {
   const passwordVersion = await getPasswordVersion(clientCode);
-  if (passwordVersion === null) return;
+  if (passwordVersion === null) return null;
+  const token = signToken({
+    clientCode,
+    passwordVersion,
+    exp: Date.now() + SESSION_SECONDS * 1000,
+  });
   const cookieStore = await readCookies();
-  cookieStore.set(
-    SESSION_COOKIE,
-    signToken({
-      clientCode,
-      passwordVersion,
-      exp: Date.now() + SESSION_SECONDS * 1000,
-    }),
-    cookieOptions(SESSION_SECONDS),
-  );
+  cookieStore.set(SESSION_COOKIE, token, cookieOptions(SESSION_SECONDS));
+  return token;
 }
 
 export async function clearSession() {
@@ -96,17 +95,15 @@ export async function openAdminSession(
   role: "admin" | "superadmin",
   passwordVersion: number,
 ) {
+  const token = signToken({
+    staffId,
+    role,
+    passwordVersion,
+    exp: Date.now() + SESSION_SECONDS * 1000,
+  });
   const cookieStore = await readCookies();
-  cookieStore.set(
-    SESSION_COOKIE,
-    signToken({
-      staffId,
-      role,
-      passwordVersion,
-      exp: Date.now() + SESSION_SECONDS * 1000,
-    }),
-    cookieOptions(SESSION_SECONDS),
-  );
+  cookieStore.set(SESSION_COOKIE, token, cookieOptions(SESSION_SECONDS));
+  return token;
 }
 
 export async function readAdminSession() {

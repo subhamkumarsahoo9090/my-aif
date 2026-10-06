@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import Logo, { type BrandDisplay } from "@/components/layout/Logo";
 import SectionBar from "@/components/layout/SectionBar";
-import { api, apiFetch } from "@/config/endapi";
+import { api, apiFetch, saveSessionToken } from "@/config/endapi";
 import type { AdminUser } from "@/lib/types";
 
 const links = [
@@ -68,6 +68,7 @@ export default function AdminShell({
 
   async function logout() {
     await apiFetch(api.auth.logout, { method: "POST" });
+    saveSessionToken(null);
     router.replace("/admin/login");
   }
 

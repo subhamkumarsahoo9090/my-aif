@@ -91,8 +91,8 @@ export async function login(body) {
   if (!account) return fail("Email or password is incorrect.", 401);
 
   await noteStaffLogin(account);
-  await openAdminSession(account.id, account.role, account.version);
-  return ok({ user: await toAdminUser(account.id) });
+  const token = await openAdminSession(account.id, account.role, account.version);
+  return ok({ user: await toAdminUser(account.id), token });
 }
 
 export async function session() {

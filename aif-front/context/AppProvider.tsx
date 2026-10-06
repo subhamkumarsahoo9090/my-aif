@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 import ToastViewport from "@/components/ui/ToastViewport";
-import { api, apiFetch } from "@/config/endapi";
+import { api, apiFetch, saveSessionToken } from "@/config/endapi";
 import type { SessionUser } from "@/lib/types";
 
 type Toast = {
@@ -101,10 +101,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         message?: string;
         user?: SessionUser;
         destination?: string;
+        token?: string;
       };
       if (!response.ok) {
         return data.message ?? "Could not sign in.";
       }
+      if (data.token) saveSessionToken(data.token);
       setSessionExpired(false);
       if (data.destination === "/admin") {
         setUser(null);
@@ -126,6 +128,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // The local session still ends if the request fails.
     }
+    saveSessionToken(null);
     setUser(null);
     setSidebarOpen(false);
     setSessionExpired(reason === "idle");

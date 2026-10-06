@@ -4,7 +4,15 @@ function cookieJar(req, res) {
   return {
     get(name) {
       const value = req.cookies?.[name];
-      return typeof value === "string" ? { value } : undefined;
+      if (typeof value === "string" && value) return { value };
+      if (name === "aif_session") {
+        const header = req.headers.authorization;
+        if (typeof header === "string" && header.startsWith("Bearer ")) {
+          const token = header.slice("Bearer ".length).trim();
+          if (token) return { value: token };
+        }
+      }
+      return undefined;
     },
     set(name, value, options = {}) {
       res.cookie(name, value, {

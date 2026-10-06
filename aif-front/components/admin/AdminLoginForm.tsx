@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, apiFetch } from "@/config/endapi";
+import { api, apiFetch, saveSessionToken } from "@/config/endapi";
 import { inputClass, labelClass, primaryButtonClass } from "@/components/ui/classes";
 
 export default function AdminLoginForm() {
@@ -23,12 +23,13 @@ export default function AdminLoginForm() {
         password: form.get("password"),
       }),
     });
-    const data = (await response.json().catch(() => ({}))) as { message?: string };
+    const data = (await response.json().catch(() => ({}))) as { message?: string; token?: string };
     setPending(false);
     if (!response.ok) {
       setError(data.message ?? "Sign in failed.");
       return;
     }
+    if (data.token) saveSessionToken(data.token);
     router.push("/admin");
   }
 

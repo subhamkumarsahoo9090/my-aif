@@ -8,8 +8,21 @@ function route(path) {
   return `${apiOrigin}${path}`;
 }
 
+const TOKEN_KEY = "aif_session_token";
+
+export function saveSessionToken(token) {
+  if (typeof window === "undefined") return;
+  if (token) sessionStorage.setItem(TOKEN_KEY, token);
+  else sessionStorage.removeItem(TOKEN_KEY);
+}
+
 export function apiFetch(url, init = {}) {
-  return fetch(url, { credentials: "include", ...init });
+  const headers = new Headers(init.headers);
+  if (typeof window !== "undefined" && !headers.has("Authorization")) {
+    const token = sessionStorage.getItem(TOKEN_KEY);
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+  }
+  return fetch(url, { credentials: "include", ...init, headers });
 }
 
 export const api = {

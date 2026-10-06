@@ -26,8 +26,8 @@ export async function login(body) {
   const account = await authenticate(identifier, password);
   if (account) {
     const clientCode = account.portal.profile.tradingCode;
-    await openSession(clientCode);
-    return ok({ user: await toSessionUser(clientCode), destination: "/dashboard" });
+    const token = await openSession(clientCode);
+    return ok({ user: await toSessionUser(clientCode), destination: "/dashboard", token });
   }
 
   const canonical = canonicalIdentifier(identifier);
@@ -36,8 +36,8 @@ export async function login(body) {
     if (staff === "suspended") return fail("This staff account is suspended.", 403);
     if (staff) {
       await noteStaffLogin(staff);
-      await openAdminSession(staff.id, staff.role, staff.version);
-      return ok({ destination: "/admin" });
+      const token = await openAdminSession(staff.id, staff.role, staff.version);
+      return ok({ destination: "/admin", token });
     }
   }
 
