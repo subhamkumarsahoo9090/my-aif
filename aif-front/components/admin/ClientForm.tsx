@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { api, apiFetch } from "@/config/endapi";
-import { accountTypes, maxAdultDob, validateCreateClient } from "@/lib/client-validation";
+import { accountTypes, maxAdultDob, occupations, validateCreateClient } from "@/lib/client-validation";
 import type { BankAccount, Nominee } from "@/lib/types";
 import { errorClass } from "@/components/ui/classes";
 import DateField from "@/components/ui/DateField";
@@ -37,6 +37,8 @@ export default function ClientForm() {
   const [fullName, setFullName] = useState("");
   const [fatherName, setFatherName] = useState("");
   const [motherName, setMotherName] = useState("");
+  const [occupation, setOccupation] = useState("");
+  const [occupationOther, setOccupationOther] = useState("");
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
   const [pan, setPan] = useState("");
@@ -65,6 +67,8 @@ export default function ClientForm() {
     setFullName("");
     setFatherName("");
     setMotherName("");
+    setOccupation("");
+    setOccupationOther("");
     setEmail("");
     setMobile("");
     setPan("");
@@ -130,6 +134,7 @@ export default function ClientForm() {
       fullName,
       fatherName,
       motherName,
+      occupation: occupation === "Other" ? occupationOther.trim() || "Other" : occupation,
       email,
       mobile,
       pan,
@@ -171,6 +176,18 @@ export default function ClientForm() {
           <TextField required icon={<UserIcon />} label="Full name" value={fullName} error={errors.fullName} onChange={setFullName} autoComplete="name" placeholder="Enter full name" />
           <TextField required label="Father's name" value={fatherName} error={errors.fatherName} onChange={setFatherName} autoComplete="off" placeholder="Enter father's name" />
           <TextField required label="Mother's name" value={motherName} error={errors.motherName} onChange={setMotherName} autoComplete="off" placeholder="Enter mother's name" />
+          <SelectField
+            required
+            label="Occupation"
+            value={occupation}
+            error={occupation === "Other" ? undefined : errors.occupation}
+            onChange={setOccupation}
+            placeholder="Select occupation"
+            options={occupations.map((item) => ({ value: item, label: item }))}
+          />
+          {occupation === "Other" ? (
+            <TextField required label="Specify occupation" value={occupationOther} error={errors.occupation} onChange={setOccupationOther} placeholder="Enter occupation" />
+          ) : null}
           <label className="text-sm">
             <FieldLabel required>DOB</FieldLabel>
             <DateField

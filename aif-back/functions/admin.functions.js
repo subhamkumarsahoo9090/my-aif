@@ -160,6 +160,7 @@ export async function updateClient(code, body) {
     pan: optionalText(body, "pan")?.toUpperCase(),
     dateOfBirth: optionalText(body, "dateOfBirth"),
     address: optionalText(body, "address"),
+    occupation: optionalText(body, "occupation"),
     nomineeName: optionalText(body, "nomineeName"),
     nomineeRelationship: optionalText(body, "nomineeRelationship"),
     nominees,

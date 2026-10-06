@@ -11,11 +11,26 @@ const upiPattern = /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z]{2,64}$/;
 const dpOrderPattern = /^[A-Za-z0-9-]{1,40}$/;
 
 export const accountTypes = ["Savings", "Current", "NRE", "NRO"] as const;
+export const occupations = [
+  "Private sector",
+  "Public sector",
+  "Government service",
+  "Business",
+  "Professional",
+  "Agriculturist",
+  "Retired",
+  "Homemaker",
+  "Student",
+  "Other",
+] as const;
+
+const occupationPattern = /^[A-Za-z][A-Za-z .,'&/-]{1,79}$/;
 
 export type CreateClientInput = {
   fullName: string;
   fatherName: string;
   motherName: string;
+  occupation: string;
   email: string;
   mobile: string;
   pan: string;
@@ -61,6 +76,7 @@ export function validateCreateClient(input: {
   fullName: string;
   fatherName: string;
   motherName: string;
+  occupation?: string;
   email: string;
   mobile: string;
   pan: string;
@@ -76,6 +92,7 @@ export function validateCreateClient(input: {
   const fullName = input.fullName.trim();
   const fatherName = input.fatherName.trim();
   const motherName = input.motherName.trim();
+  const occupation = (input.occupation ?? "").trim();
   const email = input.email.trim().toLowerCase();
   const mobile = normalizeMobile(input.mobile);
   const pan = input.pan.trim().toUpperCase();
@@ -91,6 +108,14 @@ export function validateCreateClient(input: {
 
   if (!motherName) errors.motherName = "Enter the mother's name.";
   else if (!personNamePattern.test(motherName)) errors.motherName = "Use letters only, at least 2 characters.";
+
+  if (input.occupation !== undefined) {
+    if (!occupation) errors.occupation = "Choose the occupation.";
+    else if (occupation === "Other") errors.occupation = "Enter the occupation.";
+    else if (!occupations.includes(occupation as (typeof occupations)[number]) && !occupationPattern.test(occupation)) {
+      errors.occupation = "Enter a valid occupation.";
+    }
+  }
 
   if (!email) errors.email = "Enter the email address.";
   else if (!emailPattern.test(email)) errors.email = "Enter a valid email address, such as name@example.com.";
@@ -174,6 +199,7 @@ export function validateCreateClient(input: {
       fullName,
       fatherName,
       motherName,
+      occupation,
       email,
       mobile,
       pan,
@@ -215,6 +241,7 @@ export function readCreateClientBody(body: unknown) {
     fullName: text(record.fullName),
     fatherName: text(record.fatherName),
     motherName: text(record.motherName),
+    occupation: text(record.occupation),
     email: text(record.email),
     mobile: text(record.mobile),
     pan: text(record.pan),

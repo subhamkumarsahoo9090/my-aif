@@ -489,6 +489,7 @@ export async function saveClient(
     fullName: string;
     fatherName: string;
     motherName: string;
+    occupation: string;
     email: string;
     mobile: string;
     pan: string;
@@ -540,20 +541,91 @@ function cell(row: Record<string, string>, ...keys: string[]) {
 }
 
 function parseCsv(text: string) {
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  if (lines.length === 0) return [];
-  const headers = lines[0].split(",").map((header) => header.trim().toLowerCase());
-  return lines.slice(1).map((line) => {
-    const cells = line.split(",").map((item) => item.trim());
-    const record: Record<string, string> = {};
+  const table = splitCsv(text);
+  if (table.length === 0) return [];
+  const headers = table[0].cells.map((header) => header.trim().toLowerCase().replace(/\s+/g, " "));
+  return table.slice(1).flatMap((row) => {
+    const values: Record<string, string> = {};
     headers.forEach((header, index) => {
-      record[header] = cells[index] ?? "";
+      if (!header) return;
+      values[header] = (row.cells[index] ?? "").trim();
     });
-    return record;
+    if (!Object.values(values).some((value) => value)) return [];
+    return [{ line: row.line, values }];
   });
+}
+
+function splitCsv(text: string) {
+  const rows: Array<{ line: number; cells: string[] }> = [];
+  let cells: string[] = [];
+  let value = "";
+  let quoted = false;
+  let line = 1;
+  const source = text.replace(/^\uFEFF/, "");
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    if (quoted) {
+      if (char === '"') {
+        if (source[index + 1] === '"') {
+          value += '"';
+          index += 1;
+        } else {
+          quoted = false;
+        }
+      } else {
+        if (char === "\n") line += 1;
+        value += char;
+      }
+      continue;
+    }
+    if (char === '"') {
+      quoted = true;
+      continue;
+    }
+    if (char === ",") {
+      cells.push(value);
+      value = "";
+      continue;
+    }
+    if (char === "\n" || char === "\r") {
+      if (char === "\r" && source[index + 1] === "\n") index += 1;
+      cells.push(value);
+      if (cells.some((item) => item.trim())) rows.push({ line, cells });
+      cells = [];
+      value = "";
+      line += 1;
+      continue;
+    }
+    value += char;
+  }
+  if (value.length > 0 || cells.length > 0) {
+    cells.push(value);
+    if (cells.some((item) => item.trim())) rows.push({ line, cells });
+  }
+  return rows;
+}
+
+function isAllotmentSheet(values: Record<string, string>) {
+  const keys = new Set(Object.keys(values));
+  const hasPan = keys.has("pan number") || keys.has("pan");
+  const hasUnits = keys.has("number of units") || keys.has("units") || keys.has("isin number") || keys.has("isin");
+  return hasPan && hasUnits;
+}
+
+function allotmentIso(value: string) {
+  const match = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/.exec(value.trim());
+  if (!match) return "";
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return "";
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${year}-${pad(month)}-${pad(day)}`;
+}
+
+function panTokens(value: string) {
+  return value.toUpperCase().match(/[A-Z]{5}[0-9]{4}[A-Z]/g) ?? [];
 }
 
 async function statementClientCode(headerLines: string[], chosenCode: string) {
@@ -585,9 +657,14 @@ export async function previewImport(type: ImportKind, csv: string, clientCode = 
     return previewLedgerStatement(statement, clientCode);
   }
   const parsed = parseCsv(csv);
+  if (parsed.length === 0) {
+    return [{ line: 1, ok: false, errors: ["No holding rows were found."], values: {} }];
+  }
+  if (isAllotmentSheet(parsed[0].values)) return previewAllotmentRows(parsed);
   const rows: ImportRow[] = [];
-  for (const [index, values] of parsed.entries()) {
+  for (const row of parsed) {
     const errors: string[] = [];
+    const values = row.values;
     const code = cell(values, "clientcode", "client_code", "code");
     if (!(await getPortal(code))) errors.push("Unknown client code.");
     const identifier = cell(values, "identifier", "security").toUpperCase();
@@ -598,9 +675,58 @@ export async function previewImport(type: ImportKind, csv: string, clientCode = 
     if (!Number.isFinite(quantity) || quantity <= 0) errors.push("Quantity must be greater than zero.");
     if (!Number.isFinite(averageCost) || averageCost < 0) errors.push("Average cost is invalid.");
     if (!Number.isFinite(marketValue) || marketValue < 0) errors.push("Market value is invalid.");
-    rows.push({ line: index + 2, ok: errors.length === 0, errors, values });
+    rows.push({ line: row.line, ok: errors.length === 0, errors, values });
   }
   return rows;
+}
+
+async function previewAllotmentRows(parsed: Array<{ line: number; values: Record<string, string> }>) {
+  const portals = await listPortals();
+  const byPan = new Map<string, { code: string; name: string }>();
+  portals.forEach((portal) => {
+    panTokens(portal.profile.pan).forEach((token) => {
+      if (!byPan.has(token)) byPan.set(token, { code: portal.profile.tradingCode, name: portal.profile.fullName });
+    });
+  });
+  return parsed.map((row) => {
+    const source = row.values;
+    const errors: string[] = [];
+    const srNo = cell(source, "sr. no.", "sr no.", "sr no", "sr. no", "s.no", "s. no.", "serial no");
+    const isin = cell(source, "isin number", "isin", "isinnumber").toUpperCase();
+    const description = cell(source, "isin description", "description", "isindescription");
+    const allottee = cell(source, "name of allottee", "allottee", "allottee name");
+    const pan = cell(source, "pan number", "pan", "pannumber").toUpperCase();
+    const allotmentDate = allotmentIso(cell(source, "date of alloment", "date of allotment", "allotment date", "date"));
+    const unitsText = cell(source, "number of units", "units", "quantity").replace(/,/g, "").trim();
+    const units = Number(unitsText);
+    const tokens = panTokens(pan);
+    const matched = tokens.map((token) => byPan.get(token)).find(Boolean);
+    if (!isin) errors.push("ISIN number is required.");
+    else if (!/^[A-Z0-9]{12}$/.test(isin)) errors.push("Enter a 12-character ISIN.");
+    if (!description) errors.push("ISIN description is required.");
+    if (!allottee) errors.push("Name of allottee is required.");
+    if (!pan) errors.push("PAN number is required.");
+    else if (tokens.length === 0) errors.push("Enter a valid PAN.");
+    else if (!matched) errors.push("This PAN does not match a client.");
+    if (!allotmentDate) errors.push("Date of allotment must be DD-MM-YYYY.");
+    if (!Number.isFinite(units) || units <= 0) errors.push("Number of units must be greater than zero.");
+    return {
+      line: row.line,
+      ok: errors.length === 0,
+      errors,
+      values: {
+        srno: srNo,
+        isin,
+        description,
+        allotmentdate: allotmentDate,
+        allottee,
+        pan,
+        units: Number.isFinite(units) && units > 0 ? unitsText : "",
+        clientcode: matched?.code ?? "",
+        clientname: matched?.name ?? "",
+      },
+    };
+  });
 }
 
 async function previewLedgerStatement(
@@ -658,13 +784,21 @@ export async function commitImport(actor: string, type: ImportKind, fileName: st
     } else {
       const holdingRows = [];
       for (const row of group) {
-        const identifier = cell(row.values, "identifier", "security").toUpperCase();
+        const identifier = cell(row.values, "identifier", "security", "isin").toUpperCase();
+        const description = cell(row.values, "description");
+        const quantity = Number(cell(row.values, "quantity", "units"));
+        const averageCost = Number(cell(row.values, "averagecost", "average_cost") || 0);
+        const marketValue = Number(cell(row.values, "marketvalue", "market_value") || 0);
         holdingRows.push({
           identifier,
-          name: (await knownSecurity(identifier)) ?? identifier,
-          quantity: Number(cell(row.values, "quantity")),
-          averageCost: Number(cell(row.values, "averagecost", "average_cost")),
-          marketValue: Number(cell(row.values, "marketvalue", "market_value")),
+          name: description || (await knownSecurity(identifier)) || identifier,
+          quantity,
+          averageCost,
+          marketValue,
+          srNo: cell(row.values, "srno"),
+          allotmentDate: cell(row.values, "allotmentdate"),
+          allotteeName: cell(row.values, "allottee"),
+          pan: cell(row.values, "pan"),
         });
       }
       await importHoldingRows(code, holdingRows);

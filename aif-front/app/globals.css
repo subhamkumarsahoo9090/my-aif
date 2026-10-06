@@ -104,7 +104,7 @@ body {
 
 .portal-sidebar {
   background-color: #091c37;
-  background-image: url("/sidebar-bg.jpg");
+  background-image: url("/sidebar-bg.jpg?v=2");
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
@@ -118,6 +118,38 @@ body {
   background-repeat: no-repeat;
   background-size: cover;
   color: #ffffff;
+}
+
+input[type="checkbox"] {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  flex-shrink: 0;
+  border: 1.5px solid #d5dde6;
+  border-radius: 0.25rem;
+  background-color: #ffffff;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 0.75rem 0.75rem;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+input[type="checkbox"]:checked {
+  border-color: #f97316;
+  background-color: #f97316;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' d='M3.2 8.2 6.4 11.2 12.8 4.6'/%3E%3C/svg%3E");
+}
+
+input[type="checkbox"]:focus-visible {
+  outline: 2px solid #f97316;
+  outline-offset: 2px;
+}
+
+input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 input:-webkit-autofill,

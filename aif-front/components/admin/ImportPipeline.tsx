@@ -9,8 +9,7 @@ type ImportKind = "ledger" | "holdings";
 type PreviewRow = { line: number; ok: boolean; errors: string[]; values: Record<string, string> };
 type ClientOption = { code: string; name: string };
 
-const samples: Record<ImportKind, string> = {
-  ledger: `{
+const ledgerSample = `{
   "lvbody": {
     "dspvchdetail": [
       {
@@ -22,9 +21,7 @@ const samples: Record<ImportKind, string> = {
       }
     ]
   }
-}`,
-  holdings: "clientCode,identifier,quantity,averageCost,marketValue\nTC24018,TGF-I-A,4500,1000,5130000",
-};
+}`;
 
 export default function ImportPipeline({ kind }: { kind: ImportKind }) {
   const type = kind;
@@ -99,31 +96,38 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
       setMessage(null);
       return;
     }
-    setCsv(await file.text());
+    const text = await file.text();
+    setCsv(text);
     setMessage(null);
+    if (type === "holdings") await preview(text, file.name);
   }
 
-  async function preview() {
+  async function preview(source = csv, name = fileName) {
     setPending(true);
     setMessage(null);
-    const response = await apiFetch(api.admin.imports, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ step: "preview", type, csv, fileName, clientCode }),
-    });
-    const data = (await response.json().catch(() => ({}))) as {
-      rows?: PreviewRow[];
-      valid?: number;
-      failed?: number;
-      message?: string;
-    };
-    setPending(false);
-    if (!response.ok || !data.rows) {
-      setMessage(data.message ?? "The file could not be checked.");
-      return;
+    try {
+      const response = await apiFetch(api.admin.imports, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step: "preview", type, csv: source, fileName: name, clientCode }),
+      });
+      const data = (await response.json().catch(() => ({}))) as {
+        rows?: PreviewRow[];
+        valid?: number;
+        failed?: number;
+        message?: string;
+      };
+      if (!response.ok || !data.rows) {
+        setMessage(data.message ?? "The file could not be checked.");
+        return;
+      }
+      setRows(data.rows);
+      setCounts({ valid: data.valid ?? 0, failed: data.failed ?? 0 });
+    } catch {
+      setMessage("The file could not be checked.");
+    } finally {
+      setPending(false);
     }
-    setRows(data.rows);
-    setCounts({ valid: data.valid ?? 0, failed: data.failed ?? 0 });
   }
 
   async function commit() {
@@ -199,14 +203,17 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
               className="sr-only"
               onChange={(event) => {
                 const file = event.target.files?.[0];
+                event.currentTarget.value = "";
                 if (file) void readFile(file);
               }}
             />
             <span className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[#FFF1E6] text-[#F97316]">
               <UploadIcon />
             </span>
-            <span className="text-sm font-semibold text-[#16324F]">{fileName || (isLedger ? "Choose a ledger file" : "Choose a CSV file")}</span>
-            <span className="mt-1 text-xs text-[#7B8794]">{isLedger ? "Excel, TXT, JSON, PDF, or JPG" : "CSV with client code, identifier, quantity, and value"}</span>
+            <span className="text-sm font-semibold text-[#16324F]">
+              {pending && !isLedger ? "Checking the file..." : fileName || (isLedger ? "Choose a ledger file" : "Choose a CSV file")}
+            </span>
+            <span className="mt-1 text-xs text-[#7B8794]">{isLedger ? "Excel, TXT, JSON, PDF, or JPG" : "CSV with ISIN, allottee, PAN, and units"}</span>
           </label>
         </div>
 
@@ -214,31 +221,34 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
           <InfoIcon />
           {isLedger
             ? "Columns used are Date, Particulars, Vch Type, Vch No., Debit, and Credit. Closing balance rows are left off the import."
-            : "Each row needs a client code, security identifier, quantity, average cost, and market value."}
+            : "Rows are kept when the PAN matches a client. ISIN, description, allotment date, allottee, PAN, and units are saved."}
         </p>
 
         {statement ? <LedgerSheet statement={statement} /> : null}
 
-        <label className="mt-5 block text-sm">
-          <span className="mb-1.5 flex items-center justify-between gap-3">
-            <span className="font-medium text-[#1B3C6C]">{statement ? "Source text" : "Paste instead"}</span>
-            <span className="text-xs text-[#7B8794]">{csv ? `${csv.split(/\r?\n/).length} lines` : "Optional"}</span>
-          </span>
-          <textarea
-            value={csv}
-            onChange={(event) => setCsv(event.target.value)}
-            rows={statement ? 6 : 8}
-            placeholder={isLedger ? "Paste ledger text here if you are not uploading a file." : samples.holdings}
-            spellCheck={false}
-            className="min-h-36 w-full resize-y rounded-xl border border-[#E3E8EF] bg-white px-4 py-3 font-mono text-sm leading-6 text-foreground outline-none placeholder:text-[#9AA3AF] focus:border-[#F97316]"
-          />
-        </label>
-
-        <div className="mt-5 flex justify-end">
-          <button type="button" onClick={() => void preview()} className={orangeButtonClass} disabled={pending || !csv.trim()}>
-            {pending ? "Checking..." : "Check file"}
-          </button>
-        </div>
+        {isLedger ? (
+          <>
+            <label className="mt-5 block text-sm">
+              <span className="mb-1.5 flex items-center justify-between gap-3">
+                <span className="font-medium text-[#1B3C6C]">{statement ? "Source text" : "Paste instead"}</span>
+                <span className="text-xs text-[#7B8794]">{csv ? `${csv.split(/\r?\n/).length} lines` : "Optional"}</span>
+              </span>
+              <textarea
+                value={csv}
+                onChange={(event) => setCsv(event.target.value)}
+                rows={statement ? 6 : 8}
+                placeholder={ledgerSample}
+                spellCheck={false}
+                className="min-h-36 w-full resize-y rounded-xl border border-[#E3E8EF] bg-white px-4 py-3 font-mono text-sm leading-6 text-foreground outline-none placeholder:text-[#9AA3AF] focus:border-[#F97316]"
+              />
+            </label>
+            <div className="mt-5 flex justify-end">
+              <button type="button" onClick={() => void preview()} className={orangeButtonClass} disabled={pending || !csv.trim()}>
+                {pending ? "Checking..." : "Check file"}
+              </button>
+            </div>
+          </>
+        ) : null}
       </section>
 
       {message ? <p className={`${cardClass} px-5 py-3 text-sm text-[#16324F]`}>{message}</p> : null}
@@ -254,31 +264,35 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
               </div>
             </div>
             <button type="button" onClick={() => void commit()} className={orangeButtonClass} disabled={pending || counts.valid === 0}>
-              Commit valid rows
+              {isLedger ? "Commit valid rows" : "Upload matched rows"}
             </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="border-y border-[#E6EDF5] text-xs uppercase tracking-wide text-[#7B8794]">
-                <tr>
-                  <th className="px-5 py-3 font-medium">Line</th>
-                  <th className="px-5 py-3 font-medium">Result</th>
-                  <th className="px-5 py-3 font-medium">Detail</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.line} className="border-b border-[#EEF2F6] last:border-0">
-                    <td className="px-5 py-3 font-medium text-[#16324F]">{row.line}</td>
-                    <td className="px-5 py-3">
-                      <StatusBadge tone={row.ok ? "success" : "danger"}>{row.ok ? "Valid" : "Failed"}</StatusBadge>
-                    </td>
-                    <td className="px-5 py-3 text-[#3D4C5E]">{row.ok ? Object.values(row.values).join(" · ") : row.errors.join(" ")}</td>
+          {rows.some((row) => "isin" in row.values) ? (
+            <HoldingPreview rows={rows} />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="border-y border-[#E6EDF5] text-xs uppercase tracking-wide text-[#7B8794]">
+                  <tr>
+                    <th className="px-5 py-3 font-medium">Line</th>
+                    <th className="px-5 py-3 font-medium">Result</th>
+                    <th className="px-5 py-3 font-medium">Detail</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr key={row.line} className="border-b border-[#EEF2F6] last:border-0">
+                      <td className="px-5 py-3 font-medium text-[#16324F]">{row.line}</td>
+                      <td className="px-5 py-3">
+                        <StatusBadge tone={row.ok ? "success" : "danger"}>{row.ok ? "Valid" : "Failed"}</StatusBadge>
+                      </td>
+                      <td className="px-5 py-3 text-[#3D4C5E]">{row.ok ? Object.values(row.values).join(" · ") : row.errors.join(" ")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       ) : null}
 
@@ -359,6 +373,43 @@ function InfoIcon() {
       <circle cx="12" cy="12" r="8" />
       <path d="M12 11v5M12 8h.01" strokeLinecap="round" />
     </svg>
+  );
+}
+
+function HoldingPreview({ rows }: { rows: PreviewRow[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full text-left text-sm">
+        <thead className="border-y border-[#E6EDF5] text-xs uppercase tracking-wide text-[#7B8794]">
+          <tr>
+            {["Sr. No.", "ISIN", "Description", "Allotment date", "Allottee", "PAN", "Units", "Client", "Result"].map((column) => (
+              <th key={column} className="whitespace-nowrap px-4 py-3 font-medium">{column}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.line} className="border-b border-[#EEF2F6] last:border-0">
+              <td className="px-4 py-3 text-[#16324F]">{row.values.srno}</td>
+              <td className="whitespace-nowrap px-4 py-3 font-medium text-[#16324F]">{row.values.isin}</td>
+              <td className="min-w-56 px-4 py-3 text-[#3D4C5E]">{row.values.description}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-[#3D4C5E]">{sheetDate(row.values.allotmentdate)}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-[#16324F]">{row.values.allottee}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-[#3D4C5E]">{row.values.pan}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-[#16324F]">{row.values.units}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-[#16324F]">{row.values.clientname || "—"}</td>
+              <td className="px-4 py-3">
+                {row.ok ? (
+                  <StatusBadge tone="success">Matched</StatusBadge>
+                ) : (
+                  <span className="text-danger">{row.errors.join(" ")}</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

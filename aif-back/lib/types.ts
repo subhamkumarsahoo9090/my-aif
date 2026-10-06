@@ -24,6 +24,10 @@ export type Holding = {
   averageCost: number;
   marketValue: number;
   pnl: number;
+  srNo?: string;
+  allotmentDate?: string;
+  allotteeName?: string;
+  pan?: string;
 };
 
 export type StatementMeta = {
@@ -79,6 +83,7 @@ export type InvestorProfile = {
   email: string;
   fatherName: string;
   motherName: string;
+  occupation: string;
   maritalStatus: string;
   annualIncome: string;
   address: string;

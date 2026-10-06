@@ -5,13 +5,33 @@ import { useState } from "react";
 type Point = { date: string; label: string; value: number };
 type Slice = { name: string; marketValue: number };
 
-const chartColors = ["var(--pm-chart-1)", "var(--pm-chart-2)", "var(--pm-chart-3)", "var(--pm-chart-4)"];
+const chartColors = ["#1D4E89", "#F97316", "#2E5FA5", "#F6B37A"];
 
 function formatAxis(value: number) {
   const abs = Math.abs(value);
   if (abs >= 10000000) return `₹${(value / 10000000).toFixed(1)} Cr`;
   if (abs >= 100000) return `₹${(value / 100000).toFixed(1)} L`;
   return `₹${Math.round(value)}`;
+}
+
+const cardClass = "rounded-2xl border border-[#E6EDF5] bg-white shadow-[0_8px_24px_rgba(20,50,90,0.05)]";
+
+function ChartIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M4 19V5M4 19h16" strokeLinecap="round" />
+      <path d="M7 15l4-4 3 2 5-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function PieIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5H12V3.5Z" strokeLinejoin="round" />
+      <path d="M13.5 3.8A8.5 8.5 0 0 1 20.2 10.5H13.5V3.8Z" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 function shortName(name: string) {
@@ -32,24 +52,29 @@ export default function PortfolioCharts({ trend, holdings }: { trend: Point[]; h
   const points = visible.length > 0 ? visible : trend;
 
   return (
-    <div className="mt-6 grid gap-4 lg:grid-cols-3">
-      <section className="rounded-2xl border border-border bg-white p-4 shadow-[0_10px_24px_rgba(20,50,90,0.05)] lg:col-span-2">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">Portfolio valuation trend</h2>
-            <p className="mt-1 text-xs text-muted">From the first contribution to the current valuation</p>
+    <div className="mt-4 grid gap-4 lg:grid-cols-3">
+      <section className={`${cardClass} p-5 lg:col-span-2`}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-[#2E5FA5]">
+              <ChartIcon />
+            </span>
+            <div>
+              <h2 className="text-[15px] font-semibold text-[#16324F]">Portfolio valuation trend</h2>
+              <p className="text-xs text-[#7B8794]">From the first contribution to the current valuation</p>
+            </div>
           </div>
-          <div className="flex rounded-full bg-[var(--pm-card-lilac-bg)] p-1 text-xs font-semibold">
+          <div className="flex rounded-full bg-[#F4F7FB] p-1 text-xs font-semibold">
             <button
               type="button"
-              className={`rounded-full px-3 py-1 ${range === "1y" ? "bg-white text-[var(--pm-card-lilac-color)]" : "text-[var(--pm-card-lilac-color)]"}`}
+              className={`rounded-full px-3 py-1 ${range === "1y" ? "bg-[#F97316] text-white" : "text-[#5C6B7A]"}`}
               onClick={() => setRange("1y")}
             >
               1Y
             </button>
             <button
               type="button"
-              className={`rounded-full px-3 py-1 ${range === "all" ? "bg-white text-[var(--pm-card-lilac-color)]" : "text-[var(--pm-card-lilac-color)]"}`}
+              className={`rounded-full px-3 py-1 ${range === "all" ? "bg-[#F97316] text-white" : "text-[#5C6B7A]"}`}
               onClick={() => setRange("all")}
             >
               All
@@ -58,9 +83,16 @@ export default function PortfolioCharts({ trend, holdings }: { trend: Point[]; h
         </div>
         <TrendChart points={points} />
       </section>
-      <section className="rounded-2xl border border-border bg-white p-4 shadow-[0_10px_24px_rgba(20,50,90,0.05)]">
-        <h2 className="text-sm font-semibold text-foreground">Asset allocation</h2>
-        <p className="mt-1 text-xs text-muted">Distribution across funds</p>
+      <section className={`${cardClass} p-5`}>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#FFF1E6] text-[#F97316]">
+            <PieIcon />
+          </span>
+          <div>
+            <h2 className="text-[15px] font-semibold text-[#16324F]">Asset allocation</h2>
+            <p className="text-xs text-[#7B8794]">Distribution across funds</p>
+          </div>
+        </div>
         <AllocationChart holdings={holdings} />
       </section>
     </div>
@@ -98,10 +130,10 @@ function TrendChart({ points }: { points: Point[] }) {
           </g>
         );
       })}
-      <polyline fill="none" stroke="var(--pm-chart-1)" strokeWidth="3" points={line} strokeLinejoin="round" strokeLinecap="round" />
+      <polyline fill="none" stroke="#F97316" strokeWidth="3" points={line} strokeLinejoin="round" strokeLinecap="round" />
       {coords.map((point) => (
         <g key={`${point.label}-${point.x}`}>
-          <circle cx={point.x} cy={point.y} r="4" fill="#ffffff" stroke="var(--pm-chart-1)" strokeWidth="2" />
+          <circle cx={point.x} cy={point.y} r="4" fill="#ffffff" stroke="#F97316" strokeWidth="2" />
           <text x={point.x} y={height - 8} textAnchor="middle" fontSize="11" fill="var(--pm-muted)">
             {point.label}
           </text>
@@ -126,7 +158,7 @@ function AllocationChart({ holdings }: { holdings: Slice[] }) {
           const dash = `${length} ${circumference - length}`;
           const circle = (
             <circle
-              key={holding.name}
+              key={`${holding.name}-${index}`}
               cx="60"
               cy="60"
               r={radius}
@@ -145,7 +177,7 @@ function AllocationChart({ holdings }: { holdings: Slice[] }) {
         {holdings.map((holding, index) => {
           const share = Math.round((holding.marketValue / total) * 100);
           return (
-            <li key={holding.name} className="flex items-center justify-between gap-3">
+            <li key={`${holding.name}-${index}`} className="flex items-center justify-between gap-3">
               <span className="flex min-w-0 items-center gap-2">
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: chartColors[index % chartColors.length] }} />
                 <span className="truncate text-foreground">{shortName(holding.name)}</span>

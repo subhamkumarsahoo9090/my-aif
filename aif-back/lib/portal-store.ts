@@ -322,6 +322,7 @@ export function withProfileCollections(portal: PortalData, patch: Partial<Invest
     profile: {
       ...profile,
       nominees,
+      occupation: profile.occupation ?? "",
       nomineeName: first?.name ?? "",
       nomineeRelationship: first?.relationship ?? "",
       banks,
@@ -421,6 +422,7 @@ export async function createClient(input: {
   fullName: string;
   fatherName: string;
   motherName: string;
+  occupation: string;
   email: string;
   mobile: string;
   pan: string;
@@ -458,6 +460,7 @@ export async function createClient(input: {
       email,
       fatherName: input.fatherName.trim(),
       motherName: input.motherName.trim(),
+      occupation: input.occupation.trim(),
       maritalStatus: "",
       annualIncome: "",
       address: input.address.trim(),
@@ -535,6 +538,10 @@ export async function importHoldingRows(
     quantity: number;
     averageCost: number;
     marketValue: number;
+    srNo?: string;
+    allotmentDate?: string;
+    allotteeName?: string;
+    pan?: string;
   }>,
 ) {
   await ready();
@@ -542,7 +549,12 @@ export async function importHoldingRows(
   if (!account) return false;
   rows.forEach((row) => {
     const identifier = row.identifier.toUpperCase();
-    const existing = account.portal.holdings.find((item) => item.identifier === identifier);
+    const allotmentDate = row.allotmentDate?.trim() ?? "";
+    const pan = row.pan?.trim().toUpperCase() ?? "";
+    const id = allotmentDate
+      ? `${identifier}-${allotmentDate}-${pan.replace(/[^A-Z0-9]/g, "")}`.toLowerCase()
+      : identifier.toLowerCase();
+    const existing = account.portal.holdings.find((item) => item.id === id);
     const next = {
       identifier,
       name: row.name,
@@ -550,11 +562,15 @@ export async function importHoldingRows(
       averageCost: row.averageCost,
       marketValue: row.marketValue,
       pnl: row.marketValue - row.quantity * row.averageCost,
+      ...(row.srNo ? { srNo: row.srNo } : {}),
+      ...(allotmentDate ? { allotmentDate } : {}),
+      ...(row.allotteeName ? { allotteeName: row.allotteeName } : {}),
+      ...(pan ? { pan } : {}),
     };
     if (existing) {
       Object.assign(existing, next);
     } else {
-      account.portal.holdings.push({ id: identifier.toLowerCase(), ...next });
+      account.portal.holdings.push({ id, ...next });
     }
   });
   refreshMetrics(account.portal);

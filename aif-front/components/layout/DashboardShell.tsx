@@ -93,13 +93,18 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       <SectionBar
         title={pathname === "/dashboard" ? `Hello, ${user.name}` : page.title}
         description={page.description}
+        icon={
+          pathname === "/dashboard" ? <ChartIcon />
+          : pathname === "/profile" ? <UserIcon />
+          : pathname === "/ledger" ? <ListIcon />
+          : pathname === "/holdings" ? <GridIcon />
+          : pathname === "/statements" ? <DocIcon />
+          : undefined
+        }
         end={
           <div className="flex shrink-0 items-center gap-2">
             <div className="flex min-w-0 items-center gap-2.5 rounded-2xl bg-white/15 py-1.5 pl-1.5 pr-3">
-              <span
-                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-semibold text-white"
-                style={{ background: "linear-gradient(135deg, var(--pm-banner-from), var(--pm-banner-to))" }}
-              >
+              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/20 text-xs font-semibold text-white">
                 {initials(user.name)}
               </span>
               <div className="hidden min-w-0 text-left sm:block">
@@ -112,17 +117,66 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
               onClick={() => {
                 void logout("manual").then(() => router.replace("/login"));
               }}
-              className="rounded-xl bg-white/15 px-3 py-2 text-sm font-medium text-white hover:bg-white/25"
+              className="rounded-full border border-white/35 bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20"
             >
               Log out
             </button>
           </div>
         }
       />
-      <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6" style={{ background: "var(--pm-portal-page)" }}>
+      <div className="min-h-0 flex-1 overflow-y-auto bg-[#F4F7FB] p-4 md:p-6">
         {children}
       </div>
     </div>
+  );
+}
+
+function DocIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9.5A1.5 1.5 0 0 1 5.5 20V5A1.5 1.5 0 0 1 7 3.5Z" strokeLinejoin="round" />
+      <path d="M14 3.5V8h4.5M8 12h8M8 16h6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function GridIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <rect x="4" y="4" width="6.5" height="6.5" rx="1.2" />
+      <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.2" />
+      <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.2" />
+      <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.2" />
+    </svg>
+  );
+}
+
+function ListIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M8 7h12M8 12h12M8 17h12" strokeLinecap="round" />
+      <circle cx="4.5" cy="7" r="1" fill="currentColor" stroke="none" />
+      <circle cx="4.5" cy="12" r="1" fill="currentColor" stroke="none" />
+      <circle cx="4.5" cy="17" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <circle cx="12" cy="8" r="3" />
+      <path d="M5.5 19.2c1.3-2.7 3.5-4 6.5-4s5.2 1.3 6.5 4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ChartIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M4 19V5M4 19h16" strokeLinecap="round" />
+      <path d="M7 15l4-4 3 2 5-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 

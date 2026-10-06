@@ -124,11 +124,6 @@ export default function AdminShell({
             );
           })}
         </nav>
-        <div className="px-5 pb-6 pt-3">
-          <p className="text-sm font-medium leading-5 text-white">Better Insights.</p>
-          <p className="text-sm font-medium leading-5 text-white">Bigger Opportunities.</p>
-          <span className="mt-1.5 block h-0.75 w-8 rounded-full bg-[#F97316]" />
-        </div>
       </aside>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <SectionBar
@@ -137,7 +132,7 @@ export default function AdminShell({
           icon={
             pathname === "/admin"
               ? <HeaderChartIcon />
-              : pathname === "/admin/clients/new" || pathname === "/admin/clients"
+              : pathname.startsWith("/admin/clients")
                 ? <HeaderUserIcon />
                 : pathname === "/admin/ledger"
                   ? <HeaderListIcon />
