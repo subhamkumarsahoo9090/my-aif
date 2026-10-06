@@ -1,8 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
+import PwaInstall from "@/components/pwa/PwaInstall";
 import { AppProvider } from "@/context/AppProvider";
 import { projectManager, themeVariablesCss } from "@/config/projectmanager";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  themeColor: "#1B3C6C",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   ...(projectManager.seo.siteUrl
@@ -13,6 +21,12 @@ export const metadata: Metadata = {
     template: `%s | ${projectManager.app.name}`,
   },
   description: projectManager.app.description,
+  applicationName: "AIF Portal",
+  appleWebApp: {
+    capable: true,
+    title: "AIF Portal",
+    statusBarStyle: "default",
+  },
   icons: {
     icon: [
       { url: "/favicon_io%20(2)/favicon.ico" },
@@ -35,7 +49,6 @@ export const metadata: Metadata = {
       },
     ],
   },
-  manifest: "/favicon_io%20(2)/site.webmanifest",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -48,6 +61,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <style dangerouslySetInnerHTML={{ __html: themeVariablesCss() }} />
         <GoogleAnalytics />
         <AppProvider>{children}</AppProvider>
+        <PwaInstall />
       </body>
     </html>
   );

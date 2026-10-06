@@ -83,7 +83,6 @@ function BankCard({ bank, index }: { bank: BankAccount; index: number }) {
         <Field label="Account type" value={shown(bank.accountType)} />
         <Field label="UPI ID" value={shown(bank.upiId)} />
         <Field label="MICR code" value={shown(bank.micrCode)} />
-        <Field label="DP order ID" value={shown(bank.dpOrderId)} />
       </dl>
     </article>
   );
@@ -113,6 +112,7 @@ export default function ProfileCard() {
 function ProfileView({ profile }: { profile: InvestorProfile }) {
   const nominees = nomineeList(profile);
   const banks = bankList(profile);
+  const primary = banks.find((item) => item.isPrimary) ?? banks[0];
 
   return (
     <div className="grid gap-4">
@@ -144,6 +144,7 @@ function ProfileView({ profile }: { profile: InvestorProfile }) {
         <Section title="Basic details" icon={<UserGlyph />}>
           <dl className="grid gap-2 sm:grid-cols-2">
             <Field label="Trading code" value={shown(profile.tradingCode)} />
+            <Field label="Trading Code" value={shown(primary?.dpOrderId)} />
             <Field label="Full name" value={shown(profile.fullName)} />
             <Field label="Date of birth" value={profile.dateOfBirth ? formatDob(profile.dateOfBirth) : "—"} />
             <Field label="PAN" value={shown(profile.pan)} />

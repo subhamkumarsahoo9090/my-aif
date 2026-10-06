@@ -490,6 +490,8 @@ export async function saveClient(
     fatherName: string;
     motherName: string;
     occupation: string;
+    maritalStatus: string;
+    annualIncome: string;
     email: string;
     mobile: string;
     pan: string;

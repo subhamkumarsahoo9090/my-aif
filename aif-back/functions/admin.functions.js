@@ -155,12 +155,16 @@ export async function updateClient(code, body) {
   const bank = readBank(body);
   const portal = await editClient(user.name, code, {
     fullName: optionalText(body, "fullName"),
+    fatherName: optionalText(body, "fatherName"),
+    motherName: optionalText(body, "motherName"),
     email: optionalText(body, "email"),
     mobile: optionalText(body, "mobile"),
     pan: optionalText(body, "pan")?.toUpperCase(),
     dateOfBirth: optionalText(body, "dateOfBirth"),
     address: optionalText(body, "address"),
     occupation: optionalText(body, "occupation"),
+    maritalStatus: optionalText(body, "maritalStatus"),
+    annualIncome: optionalText(body, "annualIncome"),
     nomineeName: optionalText(body, "nomineeName"),
     nomineeRelationship: optionalText(body, "nomineeRelationship"),
     nominees,

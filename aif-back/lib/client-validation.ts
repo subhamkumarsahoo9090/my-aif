@@ -23,6 +23,15 @@ export const occupations = [
   "Student",
   "Other",
 ] as const;
+export const maritalStatuses = ["Single", "Married", "Divorced", "Widowed"] as const;
+export const annualIncomes = [
+  "Below ₹1 lakh",
+  "₹1 lakh to ₹5 lakh",
+  "₹5 lakh to ₹10 lakh",
+  "₹10 lakh to ₹25 lakh",
+  "₹25 lakh to ₹1 crore",
+  "Above ₹1 crore",
+] as const;
 
 const occupationPattern = /^[A-Za-z][A-Za-z .,'&/-]{1,79}$/;
 
@@ -31,6 +40,8 @@ export type CreateClientInput = {
   fatherName: string;
   motherName: string;
   occupation: string;
+  maritalStatus: string;
+  annualIncome: string;
   email: string;
   mobile: string;
   pan: string;
@@ -77,6 +88,8 @@ export function validateCreateClient(input: {
   fatherName: string;
   motherName: string;
   occupation?: string;
+  maritalStatus?: string;
+  annualIncome?: string;
   email: string;
   mobile: string;
   pan: string;
@@ -93,6 +106,8 @@ export function validateCreateClient(input: {
   const fatherName = input.fatherName.trim();
   const motherName = input.motherName.trim();
   const occupation = (input.occupation ?? "").trim();
+  const maritalStatus = (input.maritalStatus ?? "").trim();
+  const annualIncome = (input.annualIncome ?? "").trim();
   const email = input.email.trim().toLowerCase();
   const mobile = normalizeMobile(input.mobile);
   const pan = input.pan.trim().toUpperCase();
@@ -115,6 +130,14 @@ export function validateCreateClient(input: {
     else if (!occupations.includes(occupation as (typeof occupations)[number]) && !occupationPattern.test(occupation)) {
       errors.occupation = "Enter a valid occupation.";
     }
+  }
+
+  if (input.maritalStatus !== undefined && !maritalStatuses.includes(maritalStatus as (typeof maritalStatuses)[number])) {
+    errors.maritalStatus = "Choose the marital status.";
+  }
+
+  if (input.annualIncome !== undefined && !annualIncomes.includes(annualIncome as (typeof annualIncomes)[number])) {
+    errors.annualIncome = "Choose the annual income.";
   }
 
   if (!email) errors.email = "Enter the email address.";
@@ -181,7 +204,7 @@ export function validateCreateClient(input: {
 
   if (!bank.isPrimary) errors["bank.isPrimary"] = "Mark this bank account as primary.";
 
-  if (dpOrderId && !dpOrderPattern.test(dpOrderId)) errors["bank.dpOrderId"] = "DP order ID can use letters, numbers, and hyphens only.";
+  if (dpOrderId && !dpOrderPattern.test(dpOrderId)) errors["bank.dpOrderId"] = "Trading code can use letters, numbers, and hyphens only.";
 
   if (!tradingCode) errors.tradingCode = "Enter the trading code.";
   else if (!dpOrderPattern.test(tradingCode)) errors.tradingCode = "Trading code can use letters, numbers, and hyphens only.";
@@ -200,6 +223,8 @@ export function validateCreateClient(input: {
       fatherName,
       motherName,
       occupation,
+      maritalStatus,
+      annualIncome,
       email,
       mobile,
       pan,
@@ -242,6 +267,8 @@ export function readCreateClientBody(body: unknown) {
     fatherName: text(record.fatherName),
     motherName: text(record.motherName),
     occupation: text(record.occupation),
+    maritalStatus: text(record.maritalStatus),
+    annualIncome: text(record.annualIncome),
     email: text(record.email),
     mobile: text(record.mobile),
     pan: text(record.pan),

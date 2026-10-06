@@ -7,8 +7,8 @@ import { footerLogoSrc } from "@/lib/footer-logo";
 const quickLinks = [
   { href: "/", label: "Home", icon: "home" },
   { href: "/login", label: "Sign in", icon: "user" },
-  { href: "/#privacy", label: "Privacy Policy", icon: "shield" },
-  { href: "/#terms", label: "Terms & Conditions", icon: "file" },
+  { href: "/privacy", label: "Privacy Policy", icon: "shield" },
+  { href: "/terms", label: "Terms & Conditions", icon: "file" },
 ] as const;
 
 const portfolioLinks = [
@@ -113,6 +113,10 @@ export default async function Footer() {
             <span>SEBI Registered</span>
             <Dot />
             <span>ISO 27001 Certified</span>
+            <Dot />
+            <a href="https://techculture.ai/" target="_blank" rel="noreferrer" className="hover:text-white">
+              Powered by TechCulture
+            </a>
           </div>
         </div>
       </div>
@@ -162,7 +166,7 @@ function ContactRow({
       <span className="mt-0.5 text-white/80">
         <RowIcon name={icon} />
       </span>
-      <span>{children}</span>
+      <span className="whitespace-pre-line">{children}</span>
     </>
   );
 

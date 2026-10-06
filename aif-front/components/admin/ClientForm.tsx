@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { api, apiFetch } from "@/config/endapi";
-import { accountTypes, maxAdultDob, occupations, validateCreateClient } from "@/lib/client-validation";
+import { accountTypes, annualIncomes, maritalStatuses, maxAdultDob, occupations, validateCreateClient } from "@/lib/client-validation";
 import type { BankAccount, Nominee } from "@/lib/types";
 import { errorClass } from "@/components/ui/classes";
 import DateField from "@/components/ui/DateField";
@@ -39,6 +39,8 @@ export default function ClientForm() {
   const [motherName, setMotherName] = useState("");
   const [occupation, setOccupation] = useState("");
   const [occupationOther, setOccupationOther] = useState("");
+  const [maritalStatus, setMaritalStatus] = useState("");
+  const [annualIncome, setAnnualIncome] = useState("");
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
   const [pan, setPan] = useState("");
@@ -69,6 +71,8 @@ export default function ClientForm() {
     setMotherName("");
     setOccupation("");
     setOccupationOther("");
+    setMaritalStatus("");
+    setAnnualIncome("");
     setEmail("");
     setMobile("");
     setPan("");
@@ -135,6 +139,8 @@ export default function ClientForm() {
       fatherName,
       motherName,
       occupation: occupation === "Other" ? occupationOther.trim() || "Other" : occupation,
+      maritalStatus,
+      annualIncome,
       email,
       mobile,
       pan,
@@ -174,6 +180,7 @@ export default function ClientForm() {
         <SectionHeading index="1" icon={<UserIcon />} title="Personal Details" subtitle="Basic information about the client" />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <TextField required icon={<UserIcon />} label="Full name" value={fullName} error={errors.fullName} onChange={setFullName} autoComplete="name" placeholder="Enter full name" />
+          <TextField required icon={<TrendIcon />} label="Trading Code" value={tradingCode} error={errors.tradingCode} onChange={setTradingCode} placeholder="Enter trading code" />
           <TextField required label="Father's name" value={fatherName} error={errors.fatherName} onChange={setFatherName} autoComplete="off" placeholder="Enter father's name" />
           <TextField required label="Mother's name" value={motherName} error={errors.motherName} onChange={setMotherName} autoComplete="off" placeholder="Enter mother's name" />
           <SelectField
@@ -188,6 +195,24 @@ export default function ClientForm() {
           {occupation === "Other" ? (
             <TextField required label="Specify occupation" value={occupationOther} error={errors.occupation} onChange={setOccupationOther} placeholder="Enter occupation" />
           ) : null}
+          <SelectField
+            required
+            label="Marital status"
+            value={maritalStatus}
+            error={errors.maritalStatus}
+            onChange={setMaritalStatus}
+            placeholder="Select marital status"
+            options={maritalStatuses.map((item) => ({ value: item, label: item }))}
+          />
+          <SelectField
+            required
+            label="Annual income"
+            value={annualIncome}
+            error={errors.annualIncome}
+            onChange={setAnnualIncome}
+            placeholder="Select annual income"
+            options={annualIncomes.map((item) => ({ value: item, label: item }))}
+          />
           <label className="text-sm">
             <FieldLabel required>DOB</FieldLabel>
             <DateField
@@ -307,7 +332,6 @@ export default function ClientForm() {
           />
           <TextField icon={<AtIcon />} label="UPI ID" value={bank.upiId} error={errors["bank.upiId"]} onChange={(value) => updateBank({ upiId: value })} placeholder="name@bank" />
           <TextField icon={<TargetIcon />} label="MICR code" value={bank.micrCode} error={errors["bank.micrCode"]} onChange={(value) => updateBank({ micrCode: value })} inputMode="numeric" maxLength={9} placeholder="Enter MICR code" />
-          <TextField required icon={<TrendIcon />} label="Trading Code" value={tradingCode} error={errors.tradingCode} onChange={setTradingCode} placeholder="Enter trading code" />
         </div>
         <label className="mt-4 flex items-center gap-2 text-sm font-medium text-[#1B3C6C]">
           <input

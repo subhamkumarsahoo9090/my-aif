@@ -96,7 +96,7 @@ export const projectManager = {
   },
   company: {
     name: "AIF Client Portal",
-    address: "1206, 12th Floor, Kailash Building, 26 K.G. Marg, Connaught Place, New Delhi, 110001",
+    address: "Express Tower, Sector 62\nNoida, UP 201301",
     email: "info@wealthdiscovery.in",
     phone: "91 11 4344 4666",
   },
@@ -132,6 +132,28 @@ export const projectManager = {
         description: "Sign in to the AIF client portal.",
         keywords: ["sign in", "investor login"],
         noIndex: true,
+      },
+    },
+    "/privacy": {
+      showTopNav: true,
+      showSidebar: false,
+      showFooter: true,
+      seo: {
+        title: "Privacy Policy",
+        description: "How the AIF client portal handles investor profile, bank, holding, and statement information.",
+        keywords: ["privacy", "AIF", "investor data"],
+        noIndex: false,
+      },
+    },
+    "/terms": {
+      showTopNav: true,
+      showSidebar: false,
+      showFooter: true,
+      seo: {
+        title: "Terms & Conditions",
+        description: "The terms for using the private AIF client portal to view your own fund records.",
+        keywords: ["terms", "AIF", "client portal"],
+        noIndex: false,
       },
     },
     "/forgot-password": {

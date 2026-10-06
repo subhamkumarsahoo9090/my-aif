@@ -25,6 +25,9 @@ export async function login(body) {
 
   const account = await authenticate(identifier, password);
   if (account) {
+    if (account.portal.profile.status === "inactive") {
+      return fail("This client account is inactive.", 403);
+    }
     const clientCode = account.portal.profile.tradingCode;
     const token = await openSession(clientCode);
     return ok({ user: await toSessionUser(clientCode), destination: "/dashboard", token });

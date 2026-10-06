@@ -5,7 +5,7 @@ import LoadError from "@/components/ui/LoadError";
 import Skeleton from "@/components/ui/Skeleton";
 import StatusBadge from "@/components/ui/StatusBadge";
 import DateField from "@/components/ui/DateField";
-import { accountTypes, bankList, nomineeList, occupations, validateCreateClient } from "@/lib/client-validation";
+import { accountTypes, annualIncomes, bankList, maritalStatuses, nomineeList, occupations, validateCreateClient } from "@/lib/client-validation";
 import { formatDate, formatInr, formatQuantity } from "@/lib/format";
 import { api, apiFetch } from "@/config/endapi";
 import { usePortalResource } from "@/lib/use-portal-resource";
@@ -74,17 +74,19 @@ export default function Client360({ code }: { code: string }) {
     const text = (key: string) => String(form.get(key) ?? "").trim();
     const parsed = validateCreateClient({
       fullName: text("fullName"),
-      fatherName: profile.fatherName,
-      motherName: profile.motherName,
+      fatherName: text("fatherName"),
+      motherName: text("motherName"),
       email: text("email"),
       mobile: text("mobile"),
       pan: text("pan"),
       dateOfBirth: text("dateOfBirth"),
       address: text("address"),
       occupation: text("occupation"),
+      maritalStatus: text("maritalStatus"),
+      annualIncome: text("annualIncome"),
       tradingCode: profile.tradingCode,
       nominees: nomineeList(profile),
-      bank: primaryBank(profile),
+      bank: { ...primaryBank(profile), dpOrderId: text("dpOrderId") },
       status: text("status") === "inactive" ? "inactive" : "active",
       kra: profile.kra,
     });
@@ -94,13 +96,18 @@ export default function Client360({ code }: { code: string }) {
     }
     await patch({
       fullName: parsed.value.fullName,
+      fatherName: parsed.value.fatherName,
+      motherName: parsed.value.motherName,
       email: parsed.value.email,
       mobile: parsed.value.mobile,
       pan: parsed.value.pan,
       dateOfBirth: parsed.value.dateOfBirth,
       address: parsed.value.address,
       occupation: parsed.value.occupation,
+      maritalStatus: parsed.value.maritalStatus,
+      annualIncome: parsed.value.annualIncome,
       status: parsed.value.status,
+      bank: parsed.value.bank,
     });
   }
 
@@ -118,7 +125,7 @@ export default function Client360({ code }: { code: string }) {
       accountType: text("accountType"),
       upiId: text("upiId"),
       micrCode: text("micrCode"),
-      dpOrderId: text("dpOrderId"),
+      dpOrderId: primaryBank(profile).dpOrderId,
       isPrimary: true,
     };
     const parsed = validateCreateClient({
@@ -237,12 +244,13 @@ export default function Client360({ code }: { code: string }) {
           ) : null}
 
           {tab === "Profile" ? (
-            <form key={profile.tradingCode} onSubmit={saveProfile} className={`${cardClass} p-5`}>
+            <form key={`${profile.tradingCode}-${profile.fatherName}-${profile.motherName}-${profile.status}`} onSubmit={saveProfile} className={`${cardClass} p-5`}>
               <SectionHeading icon={<UserIcon />} title="Personal details" subtitle="Name, contact, PAN, and account status" />
               <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <Field name="fullName" label="Full name" defaultValue={profile.fullName} />
-                <ReadOnly label="Father's name" value={profile.fatherName} />
-                <ReadOnly label="Mother's name" value={profile.motherName} />
+                <Field name="dpOrderId" label="Trading Code" defaultValue={primaryBank(profile).dpOrderId} />
+                <Field name="fatherName" label="Father's name" defaultValue={profile.fatherName} />
+                <Field name="motherName" label="Mother's name" defaultValue={profile.motherName} />
                 <Field name="email" label="Email" defaultValue={profile.email} />
                 <Field name="mobile" label="Mobile" defaultValue={profile.mobile} />
                 <Field name="pan" label="PAN" defaultValue={profile.pan} />
@@ -250,6 +258,24 @@ export default function Client360({ code }: { code: string }) {
                   <FieldLabel>Date of birth</FieldLabel>
                   <DateField name="dateOfBirth" defaultValue={profile.dateOfBirth} className={`${fieldClass} pr-10!`} />
                 </label>
+                <Select name="maritalStatus" label="Marital status" defaultValue={profile.maritalStatus || ""}>
+                  <option value="">Select marital status</option>
+                  {profile.maritalStatus && !maritalStatuses.includes(profile.maritalStatus as (typeof maritalStatuses)[number]) ? (
+                    <option value={profile.maritalStatus}>{profile.maritalStatus}</option>
+                  ) : null}
+                  {maritalStatuses.map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </Select>
+                <Select name="annualIncome" label="Annual income" defaultValue={profile.annualIncome || ""}>
+                  <option value="">Select annual income</option>
+                  {profile.annualIncome && !annualIncomes.includes(profile.annualIncome as (typeof annualIncomes)[number]) ? (
+                    <option value={profile.annualIncome}>{profile.annualIncome}</option>
+                  ) : null}
+                  {annualIncomes.map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </Select>
                 <Select name="occupation" label="Occupation" defaultValue={profile.occupation || ""}>
                   <option value="">Select occupation</option>
                   {profile.occupation && !occupations.includes(profile.occupation as (typeof occupations)[number]) ? (
@@ -504,15 +530,6 @@ function Field({
   );
 }
 
-function ReadOnly({ label, value }: { label: string; value: string }) {
-  return (
-    <label className="text-sm">
-      <FieldLabel>{label}</FieldLabel>
-      <input readOnly value={value} className={`${fieldClass} bg-[#F8FAFC] text-[#3D4C5E]`} />
-    </label>
-  );
-}
-
 function Select({
   name,
   label,
@@ -557,7 +574,6 @@ function BankForm({ bank, onSubmit }: { bank: BankAccount; onSubmit: (event: For
         </Select>
         <Field name="upiId" label="UPI ID" defaultValue={bank.upiId} />
         <Field name="micrCode" label="MICR code" defaultValue={bank.micrCode} />
-        <Field name="dpOrderId" label="DP order ID" defaultValue={bank.dpOrderId} />
       </div>
       <div className="mt-5 flex justify-end">
         <button type="submit" className={orangeButtonClass}>Save bank</button>

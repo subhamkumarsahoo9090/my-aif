@@ -23,6 +23,9 @@ export async function authorizePortal(request: Request): Promise<
   if (!portal) {
     return { response: jsonError("Sign in required.", 401) };
   }
+  if (portal.profile.status === "inactive") {
+    return { response: jsonError("This client account is inactive.", 403) };
+  }
 
   return { portal, clientCode: session.clientCode };
 }

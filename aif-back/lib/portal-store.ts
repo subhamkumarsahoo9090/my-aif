@@ -323,6 +323,8 @@ export function withProfileCollections(portal: PortalData, patch: Partial<Invest
       ...profile,
       nominees,
       occupation: profile.occupation ?? "",
+      maritalStatus: profile.maritalStatus ?? "",
+      annualIncome: profile.annualIncome ?? "",
       nomineeName: first?.name ?? "",
       nomineeRelationship: first?.relationship ?? "",
       banks,
@@ -423,6 +425,8 @@ export async function createClient(input: {
   fatherName: string;
   motherName: string;
   occupation: string;
+  maritalStatus: string;
+  annualIncome: string;
   email: string;
   mobile: string;
   pan: string;
@@ -461,8 +465,8 @@ export async function createClient(input: {
       fatherName: input.fatherName.trim(),
       motherName: input.motherName.trim(),
       occupation: input.occupation.trim(),
-      maritalStatus: "",
-      annualIncome: "",
+      maritalStatus: input.maritalStatus.trim(),
+      annualIncome: input.annualIncome.trim(),
       address: input.address.trim(),
       nomineeName: firstNominee?.name ?? "",
       nomineeRelationship: firstNominee?.relationship ?? "",
