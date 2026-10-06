@@ -14,11 +14,14 @@ export const accountTypes = ["Savings", "Current", "NRE", "NRO"] as const;
 
 export type CreateClientInput = {
   fullName: string;
+  fatherName: string;
+  motherName: string;
   email: string;
   mobile: string;
   pan: string;
   dateOfBirth: string;
   address: string;
+  tradingCode: string;
   nominees: Nominee[];
   bank: BankAccount;
   status: ClientStatus;
@@ -56,11 +59,14 @@ function text(value: unknown) {
 
 export function validateCreateClient(input: {
   fullName: string;
+  fatherName: string;
+  motherName: string;
   email: string;
   mobile: string;
   pan: string;
   dateOfBirth: string;
   address: string;
+  tradingCode: string;
   nominees: Nominee[];
   bank: BankAccount;
   status: string;
@@ -68,14 +74,23 @@ export function validateCreateClient(input: {
 }): { ok: true; value: CreateClientInput } | { ok: false; errors: Record<string, string>; message: string } {
   const errors: Record<string, string> = {};
   const fullName = input.fullName.trim();
+  const fatherName = input.fatherName.trim();
+  const motherName = input.motherName.trim();
   const email = input.email.trim().toLowerCase();
   const mobile = normalizeMobile(input.mobile);
   const pan = input.pan.trim().toUpperCase();
   const dateOfBirth = input.dateOfBirth.trim();
   const address = input.address.trim();
+  const tradingCode = input.tradingCode.trim();
 
   if (!fullName) errors.fullName = "Enter the full name.";
   else if (!personNamePattern.test(fullName)) errors.fullName = "Use letters only, at least 2 characters.";
+
+  if (!fatherName) errors.fatherName = "Enter the father's name.";
+  else if (!personNamePattern.test(fatherName)) errors.fatherName = "Use letters only, at least 2 characters.";
+
+  if (!motherName) errors.motherName = "Enter the mother's name.";
+  else if (!personNamePattern.test(motherName)) errors.motherName = "Use letters only, at least 2 characters.";
 
   if (!email) errors.email = "Enter the email address.";
   else if (!emailPattern.test(email)) errors.email = "Enter a valid email address, such as name@example.com.";
@@ -143,6 +158,9 @@ export function validateCreateClient(input: {
 
   if (dpOrderId && !dpOrderPattern.test(dpOrderId)) errors["bank.dpOrderId"] = "DP order ID can use letters, numbers, and hyphens only.";
 
+  if (!tradingCode) errors.tradingCode = "Enter the trading code.";
+  else if (!dpOrderPattern.test(tradingCode)) errors.tradingCode = "Trading code can use letters, numbers, and hyphens only.";
+
   const status: ClientStatus = input.status === "inactive" ? "inactive" : "active";
   if (input.status !== "active" && input.status !== "inactive") errors.status = "Choose a status.";
 
@@ -154,11 +172,14 @@ export function validateCreateClient(input: {
     ok: true,
     value: {
       fullName,
+      fatherName,
+      motherName,
       email,
       mobile,
       pan,
       dateOfBirth,
       address,
+      tradingCode,
       nominees,
       bank: {
         accountNumber,
@@ -192,11 +213,14 @@ export function readCreateClientBody(body: unknown) {
   const bankRecord = record.bank && typeof record.bank === "object" ? (record.bank as Record<string, unknown>) : {};
   return validateCreateClient({
     fullName: text(record.fullName),
+    fatherName: text(record.fatherName),
+    motherName: text(record.motherName),
     email: text(record.email),
     mobile: text(record.mobile),
     pan: text(record.pan),
     dateOfBirth: text(record.dateOfBirth),
     address: text(record.address),
+    tradingCode: text(record.tradingCode),
     nominees,
     bank: {
       accountNumber: text(bankRecord.accountNumber),

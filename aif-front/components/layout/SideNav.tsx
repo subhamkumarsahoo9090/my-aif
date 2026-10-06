@@ -33,12 +33,9 @@ export default function SideNav({
         />
       ) : null}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex h-dvh w-64 shrink-0 flex-col overflow-y-auto border-r border-border text-[var(--pm-portal-sidebar-text)] transition-transform md:static md:translate-x-0 ${
+        className={`portal-sidebar fixed inset-y-0 left-0 z-40 flex h-dvh w-64 shrink-0 flex-col overflow-y-auto border-r border-white/10 transition-transform md:static md:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
-        style={{
-          background: "linear-gradient(180deg, var(--pm-portal-sidebar) 0%, var(--pm-portal-sidebar-end) 100%)",
-        }}
       >
         <div className="px-4 py-4">
           <Link href="/dashboard" onClick={() => setSidebarOpen(false)} className="inline-flex">
@@ -57,7 +54,7 @@ export default function SideNav({
                 className={
                   active
                     ? "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold"
-                    : "flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-[var(--pm-portal-sidebar-text)] hover:bg-[var(--pm-portal-page)]"
+                    : "flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-white hover:bg-white/15"
                 }
                 style={
                   active

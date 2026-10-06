@@ -5,6 +5,7 @@ import LoadError from "@/components/ui/LoadError";
 import Skeleton from "@/components/ui/Skeleton";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from "@/components/ui/classes";
+import DateField from "@/components/ui/DateField";
 import { accountTypes, bankList, nomineeList, validateCreateClient } from "@/lib/client-validation";
 import { formatDate, formatInr, formatQuantity } from "@/lib/format";
 import { api, apiFetch } from "@/config/endapi";
@@ -64,11 +65,14 @@ export default function Client360({ code }: { code: string }) {
     const text = (key: string) => String(form.get(key) ?? "").trim();
     const parsed = validateCreateClient({
       fullName: text("fullName"),
+      fatherName: profile.fatherName,
+      motherName: profile.motherName,
       email: text("email"),
       mobile: text("mobile"),
       pan: text("pan"),
       dateOfBirth: text("dateOfBirth"),
       address: text("address"),
+      tradingCode: profile.tradingCode,
       nominees: nomineeList(profile),
       bank: primaryBank(profile),
       status: text("status") === "inactive" ? "inactive" : "active",
@@ -108,11 +112,14 @@ export default function Client360({ code }: { code: string }) {
     };
     const parsed = validateCreateClient({
       fullName: profile.fullName,
+      fatherName: profile.fatherName,
+      motherName: profile.motherName,
       email: profile.email,
       mobile: profile.mobile,
       pan: profile.pan,
       dateOfBirth: profile.dateOfBirth,
       address: profile.address,
+      tradingCode: profile.tradingCode,
       nominees: nomineeList(profile),
       bank,
       status: profile.status,
@@ -130,11 +137,14 @@ export default function Client360({ code }: { code: string }) {
     if (!profile) return;
     const parsed = validateCreateClient({
       fullName: profile.fullName,
+      fatherName: profile.fatherName,
+      motherName: profile.motherName,
       email: profile.email,
       mobile: profile.mobile,
       pan: profile.pan,
       dateOfBirth: profile.dateOfBirth,
       address: profile.address,
+      tradingCode: profile.tradingCode,
       nominees: nomineeDraft,
       bank: primaryBank(profile),
       status: profile.status,
@@ -323,7 +333,11 @@ function Field({
   return (
     <label className="text-sm">
       <span className={labelClass}>{label}</span>
-      <input name={name} type={type} defaultValue={defaultValue} className={inputClass} style={type === "date" ? { colorScheme: "light" } : undefined} />
+      {type === "date" ? (
+        <DateField name={name} defaultValue={defaultValue} className={inputClass} />
+      ) : (
+        <input name={name} type={type} defaultValue={defaultValue} className={inputClass} />
+      )}
     </label>
   );
 }

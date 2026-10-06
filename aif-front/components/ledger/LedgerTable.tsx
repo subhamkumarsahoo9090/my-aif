@@ -9,6 +9,7 @@ import {
   inputClass,
   secondaryButtonClass,
 } from "@/components/ui/classes";
+import DateField from "@/components/ui/DateField";
 import { downloadBlob } from "@/lib/files";
 import { formatDate, formatInr } from "@/lib/format";
 import { api } from "@/config/endapi";
@@ -126,25 +127,13 @@ export default function LedgerTable() {
               <label className="mb-1 block text-sm font-medium" htmlFor="ledger-start">
                 Start date
               </label>
-              <input
-                id="ledger-start"
-                type="date"
-                value={start}
-                onChange={(event) => setStart(event.target.value)}
-                className={inputClass}
-              />
+              <DateField id="ledger-start" value={start} onChange={setStart} className={inputClass} />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium" htmlFor="ledger-end">
                 End date
               </label>
-              <input
-                id="ledger-end"
-                type="date"
-                value={end}
-                onChange={(event) => setEnd(event.target.value)}
-                className={inputClass}
-              />
+              <DateField id="ledger-end" value={end} onChange={setEnd} className={inputClass} />
             </div>
             <button
               type="button"

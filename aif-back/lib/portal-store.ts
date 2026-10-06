@@ -419,11 +419,14 @@ export async function listPortals() {
 
 export async function createClient(input: {
   fullName: string;
+  fatherName: string;
+  motherName: string;
   email: string;
   mobile: string;
   pan: string;
   dateOfBirth: string;
   address: string;
+  tradingCode: string;
   nominees: Nominee[];
   bank: BankAccount;
   status: PortalData["profile"]["status"];
@@ -432,9 +435,12 @@ export async function createClient(input: {
 }) {
   await ready();
   const email = input.email.trim().toLowerCase();
-  const code = `TC${String(accounts.size + 24018).padStart(5, "0")}`;
+  const code = input.tradingCode.trim();
   if ([...accounts.values()].some((account) => account.portal.profile.email.toLowerCase() === email)) {
     return { error: "An investor with this email already exists." as const };
+  }
+  if (accounts.has(code)) {
+    return { error: "An investor with this trading code already exists." as const };
   }
   const firstNominee = input.nominees[0];
   const portal = buildPortal({
@@ -450,8 +456,8 @@ export async function createClient(input: {
       pan: input.pan.trim().toUpperCase(),
       mobile: input.mobile.trim(),
       email,
-      fatherName: "",
-      motherName: "",
+      fatherName: input.fatherName.trim(),
+      motherName: input.motherName.trim(),
       maritalStatus: "",
       annualIncome: "",
       address: input.address.trim(),

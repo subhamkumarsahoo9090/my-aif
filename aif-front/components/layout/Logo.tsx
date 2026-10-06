@@ -25,10 +25,10 @@ export default function Logo({
   const showName = mode === "name" || mode === "both";
   const imageStyle =
     size === "footer"
-      ? { height: "calc(2.65rem * 1.1)", width: "calc(2.65rem * 1.1 * 270 / 91)" }
+      ? { height: "calc(2.65rem * 1.4641)", width: "calc(2.65rem * 1.4641 * 270 / 91)" }
       : {
-          height: "calc(2.5rem * 1.21275)",
-          width: "calc(2.5rem * 270 / 91 * 1.4641)",
+          height: "calc(2.5rem * 1.61417025)",
+          width: "calc(2.5rem * 270 / 91 * 1.9487171)",
         };
 
   return (

@@ -487,11 +487,14 @@ export async function saveClient(
   actor: string,
   input: {
     fullName: string;
+    fatherName: string;
+    motherName: string;
     email: string;
     mobile: string;
     pan: string;
     dateOfBirth: string;
     address: string;
+    tradingCode: string;
     nominees: PortalData["profile"]["nominees"];
     bank: PortalData["profile"]["banks"][number];
     status: ClientStatus;

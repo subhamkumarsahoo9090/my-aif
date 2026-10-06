@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { inputClass, labelClass, primaryButtonClass, secondaryButtonClass } from "@/components/ui/classes";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, apiFetch } from "@/config/endapi";
 import { parseLedgerStatement, type LedgerStatement } from "@/lib/ledger-statement";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -27,8 +26,8 @@ const samples: Record<ImportKind, string> = {
   holdings: "clientCode,identifier,quantity,averageCost,marketValue\nTC24018,TGF-I-A,4500,1000,5130000",
 };
 
-export default function ImportPipeline() {
-  const [type, setType] = useState<ImportKind>("ledger");
+export default function ImportPipeline({ kind }: { kind: ImportKind }) {
+  const type = kind;
   const [fileName, setFileName] = useState("");
   const [csv, setCsv] = useState("");
   const [clientCode, setClientCode] = useState("");
@@ -153,114 +152,144 @@ export default function ImportPipeline() {
     [type, csv],
   );
 
+  const isLedger = type === "ledger";
+
   return (
-    <div className="w-full space-y-4">
-      <section className="rounded-2xl border border-border bg-white p-5 shadow-[0_10px_24px_rgba(20,50,90,0.05)]">
-        <h2 className="text-sm font-semibold text-primary">1. Upload and type</h2>
-        <div className="mt-4 grid gap-4 lg:grid-cols-3">
-          <label className="text-sm">
-            <span className={labelClass}>Import type</span>
-            <select
-              value={type}
-              onChange={(event) => {
-                setType(event.target.value as ImportKind);
-                setRows(null);
-              }}
-              className={inputClass}
-            >
-              <option value="ledger">Ledger</option>
-              <option value="holdings">Holdings</option>
-            </select>
-          </label>
-          {type === "ledger" ? (
+    <div className="flex flex-col gap-4">
+      <section className={`${cardClass} p-5`}>
+        <div className="mb-5 flex items-center gap-3">
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-sm font-semibold text-[#1D4E89]">1</span>
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[#2E5FA5]">{isLedger ? <ListIcon /> : <GridIcon />}</span>
+          <div>
+            <h2 className="text-[15px] font-semibold text-[#16324F]">{isLedger ? "Upload ledger" : "Add holding"}</h2>
+            <p className="text-xs text-[#7B8794]">
+              {isLedger ? "Bring in debit and credit rows for one investor." : "Bring in scheme units for investor accounts."}
+            </p>
+          </div>
+        </div>
+
+        <div className={`grid gap-4 ${isLedger ? "md:grid-cols-2" : ""}`}>
+          {isLedger ? (
             <label className="text-sm">
-              <span className={labelClass}>Client</span>
-              <select value={clientCode} onChange={(event) => setClientCode(event.target.value)} className={inputClass}>
-                <option value="">Match the name in the file</option>
-                {clients.map((client) => (
-                  <option key={client.code} value={client.code}>
-                    {client.name} · {client.code}
-                  </option>
-                ))}
-              </select>
+              <span className="mb-1.5 block text-sm font-medium text-[#1B3C6C]">Client</span>
+              <span className="relative block">
+                <select
+                  value={clientCode}
+                  onChange={(event) => setClientCode(event.target.value)}
+                  className={`${fieldClass} appearance-none pr-10! ${clientCode ? "" : "text-[#9AA3AF]"}`}
+                >
+                  <option value="">Match the name in the file</option>
+                  {clients.map((client) => (
+                    <option key={client.code} value={client.code}>
+                      {client.name} · {client.code}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[#8B95A5]">
+                  <ChevronDown />
+                </span>
+              </span>
             </label>
           ) : null}
-          <label className={`text-sm ${type === "ledger" ? "" : "lg:col-span-2"}`}>
-            <span className={labelClass}>{type === "ledger" ? "Ledger file" : "CSV file"}</span>
+
+          <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[#D5DDE6] bg-[#F8FAFC] px-4 py-6 text-center hover:border-[#F97316]">
             <input
               type="file"
-              accept={type === "ledger" ? ".xlsx,.xls,.txt,.json,.pdf,.jpg,.jpeg,.png,.webp,image/*" : ".csv,text/csv"}
-              className="block w-full cursor-pointer rounded-xl border border-dashed border-border bg-[var(--pm-portal-page)] px-3 py-3 text-sm text-foreground file:mr-3 file:cursor-pointer file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-semibold file:text-primary"
+              accept={isLedger ? ".xlsx,.xls,.txt,.json,.pdf,.jpg,.jpeg,.png,.webp,image/*" : ".csv,text/csv"}
+              className="sr-only"
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (file) void readFile(file);
               }}
             />
+            <span className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[#FFF1E6] text-[#F97316]">
+              <UploadIcon />
+            </span>
+            <span className="text-sm font-semibold text-[#16324F]">{fileName || (isLedger ? "Choose a ledger file" : "Choose a CSV file")}</span>
+            <span className="mt-1 text-xs text-[#7B8794]">{isLedger ? "Excel, TXT, JSON, PDF, or JPG" : "CSV with client code, identifier, quantity, and value"}</span>
           </label>
         </div>
-        {type === "ledger" ? (
-          <p className="mt-4 text-sm text-muted">
-            Upload Excel, TXT, JSON, PDF, or a JPG of the ledger. The statement below uses Date, Particulars, Vch Type, Vch No., Debit, and Credit. Closing balance rows are left off the import.
-          </p>
-        ) : null}
+
+        <p className="mt-4 flex items-start gap-2 text-xs leading-5 text-[#7B8794]">
+          <InfoIcon />
+          {isLedger
+            ? "Columns used are Date, Particulars, Vch Type, Vch No., Debit, and Credit. Closing balance rows are left off the import."
+            : "Each row needs a client code, security identifier, quantity, average cost, and market value."}
+        </p>
+
         {statement ? <LedgerSheet statement={statement} /> : null}
-        <label className="mt-4 block text-sm">
-          <span className="mb-1 flex items-center justify-between gap-3">
-            <span className="font-medium text-foreground">{statement ? "Source text" : fileName || "File contents"}</span>
-            <span className="text-xs text-muted">{csv ? `${csv.split(/\r?\n/).length} lines` : "Paste or upload"}</span>
+
+        <label className="mt-5 block text-sm">
+          <span className="mb-1.5 flex items-center justify-between gap-3">
+            <span className="font-medium text-[#1B3C6C]">{statement ? "Source text" : "Paste instead"}</span>
+            <span className="text-xs text-[#7B8794]">{csv ? `${csv.split(/\r?\n/).length} lines` : "Optional"}</span>
           </span>
           <textarea
             value={csv}
             onChange={(event) => setCsv(event.target.value)}
-            rows={statement ? 6 : 18}
-            placeholder={samples[type]}
+            rows={statement ? 6 : 8}
+            placeholder={isLedger ? "Paste ledger text here if you are not uploading a file." : samples.holdings}
             spellCheck={false}
-            className={`${statement ? "min-h-36" : "min-h-[28rem]"} w-full resize-y rounded-2xl border border-border bg-[var(--pm-portal-page)] px-4 py-4 font-mono text-sm leading-7 text-foreground outline-none focus:border-primary`}
+            className="min-h-36 w-full resize-y rounded-xl border border-[#E3E8EF] bg-white px-4 py-3 font-mono text-sm leading-6 text-foreground outline-none placeholder:text-[#9AA3AF] focus:border-[#F97316]"
           />
         </label>
-        <button type="button" onClick={() => void preview()} className={`${primaryButtonClass} mt-4`} disabled={pending || !csv.trim()}>
-          {pending ? "Checking..." : "Check file"}
-        </button>
+
+        <div className="mt-5 flex justify-end">
+          <button type="button" onClick={() => void preview()} className={orangeButtonClass} disabled={pending || !csv.trim()}>
+            {pending ? "Checking..." : "Check file"}
+          </button>
+        </div>
       </section>
 
+      {message ? <p className={`${cardClass} px-5 py-3 text-sm text-[#16324F]`}>{message}</p> : null}
+
       {rows ? (
-        <section className="rounded-2xl border border-border bg-white p-4 shadow-[0_10px_24px_rgba(20,50,90,0.05)]">
-          <h2 className="text-sm font-medium text-primary">2. Preview and mapping</h2>
-          <p className="mt-2 text-sm text-muted">{counts.valid} rows ready · {counts.failed} rows failed</p>
-          <div className="mt-3 overflow-x-auto">
+        <section className={cardClass}>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-sm font-semibold text-[#1D4E89]">2</span>
+              <div>
+                <h2 className="text-[15px] font-semibold text-[#16324F]">Preview</h2>
+                <p className="text-xs text-[#7B8794]">{counts.valid} rows ready · {counts.failed} rows failed</p>
+              </div>
+            </div>
+            <button type="button" onClick={() => void commit()} className={orangeButtonClass} disabled={pending || counts.valid === 0}>
+              Commit valid rows
+            </button>
+          </div>
+          <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm">
-              <thead className="text-xs uppercase tracking-wide text-[var(--pm-card-blue-color)]">
+              <thead className="border-y border-[#E6EDF5] text-xs uppercase tracking-wide text-[#7B8794]">
                 <tr>
-                  <th className="px-2 py-2">Line</th>
-                  <th className="px-2 py-2">Result</th>
-                  <th className="px-2 py-2">Detail</th>
+                  <th className="px-5 py-3 font-medium">Line</th>
+                  <th className="px-5 py-3 font-medium">Result</th>
+                  <th className="px-5 py-3 font-medium">Detail</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.line} className="border-t border-border">
-                    <td className="px-2 py-2">{row.line}</td>
-                    <td className="px-2 py-2">
+                  <tr key={row.line} className="border-b border-[#EEF2F6] last:border-0">
+                    <td className="px-5 py-3 font-medium text-[#16324F]">{row.line}</td>
+                    <td className="px-5 py-3">
                       <StatusBadge tone={row.ok ? "success" : "danger"}>{row.ok ? "Valid" : "Failed"}</StatusBadge>
                     </td>
-                    <td className="px-2 py-2">{row.ok ? Object.values(row.values).join(" · ") : row.errors.join(" ")}</td>
+                    <td className="px-5 py-3 text-[#3D4C5E]">{row.ok ? Object.values(row.values).join(" · ") : row.errors.join(" ")}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <button type="button" onClick={() => void commit()} className={`${primaryButtonClass} mt-4`} disabled={pending || counts.valid === 0}>
-            Commit valid rows
-          </button>
         </section>
       ) : null}
 
-      {message ? <p className="text-sm text-primary">{message}</p> : null}
       {report.trim().split("\n").length > 1 ? (
-        <section className="rounded-2xl border border-border bg-white p-4 shadow-[0_10px_24px_rgba(20,50,90,0.05)]">
-          <h2 className="text-sm font-medium text-primary">3. Error log</h2>
+        <section className={`${cardClass} flex flex-wrap items-center justify-between gap-3 p-5`}>
+          <div>
+            <h2 className="text-[15px] font-semibold text-[#16324F]">Error log</h2>
+            <p className="text-xs text-[#7B8794]">Rows that were not committed.</p>
+          </div>
           <a
-            className={`${secondaryButtonClass} mt-3`}
+            className="inline-flex items-center rounded-full border border-[#D5DDE6] bg-white px-5 py-2.5 text-sm font-medium text-[#1B3C6C] hover:bg-[#F8FAFC]"
             href={`data:text/plain;charset=utf-8,${encodeURIComponent(report)}`}
             download="import-errors.txt"
           >
@@ -269,6 +298,67 @@ export default function ImportPipeline() {
         </section>
       ) : null}
     </div>
+  );
+}
+
+const cardClass = "rounded-2xl border border-[#E6EDF5] bg-white shadow-[0_8px_24px_rgba(20,50,90,0.05)]";
+const fieldClass =
+  "w-full rounded-xl border border-[#E3E8EF] bg-white py-2.5 pl-3 pr-3 text-sm text-foreground outline-none focus:border-[#F97316]";
+const orangeButtonClass =
+  "inline-flex items-center justify-center rounded-full bg-[#F97316] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(249,115,22,0.35)] hover:bg-[#EA6C0C] disabled:cursor-not-allowed disabled:opacity-60";
+
+function Icon({ children }: { children: ReactNode }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      {children}
+    </svg>
+  );
+}
+
+function ListIcon() {
+  return (
+    <Icon>
+      <path d="M8 7h11M8 12h11M8 17h11" strokeLinecap="round" />
+      <path d="M4 7h.01M4 12h.01M4 17h.01" strokeLinecap="round" />
+    </Icon>
+  );
+}
+
+function GridIcon() {
+  return (
+    <Icon>
+      <rect x="4" y="4" width="6" height="6" rx="1" />
+      <rect x="14" y="4" width="6" height="6" rx="1" />
+      <rect x="4" y="14" width="6" height="6" rx="1" />
+      <rect x="14" y="14" width="6" height="6" rx="1" />
+    </Icon>
+  );
+}
+
+function UploadIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M12 16V6" strokeLinecap="round" />
+      <path d="m8 9 4-4 4 4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 19h14" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ChevronDown() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="m7 10 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function InfoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="mt-0.5 h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 11v5M12 8h.01" strokeLinecap="round" />
+    </svg>
   );
 }
 

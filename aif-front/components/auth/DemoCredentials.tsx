@@ -14,14 +14,19 @@ export default function DemoCredentials() {
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const response = await apiFetch(api.auth.accounts);
-    const data = (await response.json().catch(() => ({}))) as {
-      investors?: InvestorAccount[];
-      staff?: StaffAccount[];
-    };
-    if (!response.ok) return;
-    setInvestors(data.investors ?? []);
-    setStaff(data.staff ?? []);
+    try {
+      const response = await apiFetch(api.auth.accounts);
+      const data = (await response.json().catch(() => ({}))) as {
+        investors?: InvestorAccount[];
+        staff?: StaffAccount[];
+      };
+      if (!response.ok) return;
+      setInvestors(data.investors ?? []);
+      setStaff(data.staff ?? []);
+    } catch {
+      setInvestors([]);
+      setStaff([]);
+    }
   }, []);
 
   useEffect(() => {

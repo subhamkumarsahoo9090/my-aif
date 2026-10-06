@@ -1,8 +1,5 @@
-import type { Metadata } from "next";
-import ImportPipeline from "@/components/admin/ImportPipeline";
-
-export const metadata: Metadata = { title: "Imports" };
+import { redirect } from "next/navigation";
 
 export default function ImportsPage() {
-  return <ImportPipeline />;
+  redirect("/admin/ledger");
 }

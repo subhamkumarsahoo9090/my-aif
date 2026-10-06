@@ -47,8 +47,8 @@ export default async function Footer() {
                   height={91}
                   className="max-w-none"
                   style={{
-                    height: "calc(2.65rem * 1.1)",
-                    width: "calc(2.65rem * 1.1 * 270 / 91)",
+                    height: "calc(2.65rem * 1.4641)",
+                    width: "calc(2.65rem * 1.4641 * 270 / 91)",
                   }}
                 />
               ) : null}
