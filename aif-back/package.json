@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch index.js",
-    "start": "tsx index.js"
+    "dev": "tsx watch server.js",
+    "build": "node build.mjs",
+    "start": "tsx server.js"
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",
@@ -16,6 +17,7 @@
   },
   "devDependencies": {
     "@types/node": "^20",
+    "esbuild": "^0.25.0",
     "tsx": "^4.20.6",
     "typescript": "^5"
   }

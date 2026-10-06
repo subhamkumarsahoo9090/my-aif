@@ -13,5 +13,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["./**/*.ts", "./**/*.js"]
+  "include": ["./**/*.ts", "./**/*.js"],
+  "exclude": ["node_modules", "dist", "index.js"]
 }
