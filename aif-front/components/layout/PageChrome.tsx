@@ -2,7 +2,6 @@
 
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { useApp } from "@/context/AppProvider";
 
 type PageFlags = {
   showTopNav: boolean;
@@ -28,8 +27,6 @@ export default function PageChrome({
   const showTopNav = page ? page.showTopNav : true;
   const showSidebar = page ? page.showSidebar : false;
   const showFooter = page ? page.showFooter : true;
-  const { sidebarOpen, toggleSidebar } = useApp();
-
   const homeBackground = pathname === "/";
   const loginBackground = pathname === "/login";
 
@@ -38,24 +35,7 @@ export default function PageChrome({
       {showTopNav ? topNav : null}
       <div className="flex min-h-0 flex-1">
         {showSidebar ? sidebar : null}
-        <div className="flex min-w-0 flex-1 flex-col">
-          {showSidebar ? (
-            <div className="flex h-14 items-center border-b border-border bg-background px-4 md:hidden">
-              <button
-                type="button"
-                className="inline-flex flex-col justify-center gap-1"
-                aria-label="Open menu"
-                aria-expanded={sidebarOpen}
-                onClick={toggleSidebar}
-              >
-                <span className="block h-0.5 w-5 bg-foreground" />
-                <span className="block h-0.5 w-5 bg-foreground" />
-                <span className="block h-0.5 w-5 bg-foreground" />
-              </button>
-            </div>
-          ) : null}
-          {children}
-        </div>
+        <div className="flex min-w-0 flex-1 flex-col">{children}</div>
       </div>
     </>
   );
@@ -64,22 +44,7 @@ export default function PageChrome({
     return (
       <div className="flex h-dvh overflow-hidden">
         {sidebar}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="flex h-14 shrink-0 items-center border-b border-border bg-background px-4 md:hidden">
-            <button
-              type="button"
-              className="inline-flex flex-col justify-center gap-1"
-              aria-label="Open menu"
-              aria-expanded={sidebarOpen}
-              onClick={toggleSidebar}
-            >
-              <span className="block h-0.5 w-5 bg-foreground" />
-              <span className="block h-0.5 w-5 bg-foreground" />
-              <span className="block h-0.5 w-5 bg-foreground" />
-            </button>
-          </div>
-          {children}
-        </div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
       </div>
     );
   }

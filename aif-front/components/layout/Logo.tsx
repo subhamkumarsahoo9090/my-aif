@@ -40,8 +40,8 @@ export default function Logo({
           width={270}
           height={91}
           unoptimized
-          className="max-w-none"
-          style={imageStyle}
+          className={size === "footer" ? "h-12 w-auto max-w-none" : "h-10 w-auto max-w-[9.5rem] object-contain object-left sm:h-16 sm:max-w-none"}
+          style={size === "footer" ? imageStyle : undefined}
         />
       ) : null}
       {showName ? <span>{name}</span> : null}

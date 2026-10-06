@@ -191,7 +191,7 @@ export default function AdminShell({
             </div>
           }
         />
-        <main className="min-h-0 flex-1 overflow-y-auto bg-[#F4F7FB] px-4 py-5 md:px-6 md:py-6">{children}</main>
+        <main className="min-h-0 flex-1 overflow-y-auto bg-[#F4F7FB] px-3 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-4 md:px-6 md:py-6">{children}</main>
       </div>
     </div>
   );

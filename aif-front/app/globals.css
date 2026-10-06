@@ -100,6 +100,13 @@ body {
   color: var(--pm-text);
   font-family: var(--pm-font-sans), system-ui, sans-serif;
   font-size: var(--pm-text-base);
+  overflow-x: clip;
+}
+
+img,
+svg,
+video {
+  max-width: 100%;
 }
 
 .portal-sidebar {

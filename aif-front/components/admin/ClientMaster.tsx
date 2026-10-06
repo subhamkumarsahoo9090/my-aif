@@ -61,7 +61,7 @@ export default function ClientMaster() {
               className={`${fieldClass} pl-10!`}
             />
           </label>
-          <label className="relative block w-full max-w-45">
+          <label className="relative block w-full sm:max-w-45">
             <select
               value={filter}
               onChange={(event) => setFilter(event.target.value as "all" | ClientStatus)}
@@ -77,7 +77,7 @@ export default function ClientMaster() {
           </label>
           <Link
             href="/admin/clients/new"
-            className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-[#F97316] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(249,115,22,0.35)] hover:bg-[#EA6C0C]"
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-[#F97316] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(249,115,22,0.35)] hover:bg-[#EA6C0C] sm:ml-auto sm:w-auto"
           >
             <PlusIcon />
             Create Client

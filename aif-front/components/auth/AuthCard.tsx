@@ -36,7 +36,7 @@ export default function AuthCard({
       <div
         className={
           transparent
-            ? "flex flex-1 flex-col justify-start gap-6 px-5 pb-6 pt-[10vh] sm:px-8 lg:px-14 xl:px-20"
+            ? "flex flex-1 flex-col justify-start gap-6 px-4 pb-6 pt-4 sm:px-8 sm:pt-[10vh] lg:px-14 xl:px-20"
             : "contents"
         }
       >
@@ -51,7 +51,7 @@ export default function AuthCard({
           <div
             className={
               transparent
-                ? "animate-login-card w-full max-w-md shrink-0 rounded-3xl border border-white bg-white p-7 text-foreground shadow-[0_22px_60px_rgba(15,40,80,0.28)] lg:ml-auto"
+                ? "animate-login-card w-full max-w-md shrink-0 rounded-3xl border border-white bg-white p-5 text-foreground shadow-[0_22px_60px_rgba(15,40,80,0.28)] sm:p-7 lg:ml-auto"
                 : "w-full max-w-md rounded-xl border border-border bg-background p-6 shadow-sm"
             }
           >
@@ -62,7 +62,7 @@ export default function AuthCard({
           </div>
         </div>
         {aside ? (
-          <div className="mx-auto mt-[9vh] w-full max-w-6xl">
+          <div className="mx-auto mt-8 w-full max-w-6xl sm:mt-[9vh]">
             <LoginHighlights />
           </div>
         ) : null}

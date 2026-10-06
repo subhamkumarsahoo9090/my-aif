@@ -56,7 +56,7 @@ export default function PwaInstall() {
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-      <div className="mx-auto flex max-w-lg items-center gap-3 rounded-2xl border border-[#E6EDF5] bg-white p-3 shadow-[0_12px_32px_rgba(20,50,90,0.16)]">
+      <div className="mx-auto flex max-w-lg flex-wrap items-center gap-3 rounded-2xl border border-[#E6EDF5] bg-white p-3 shadow-[0_12px_32px_rgba(20,50,90,0.16)]">
         <img src="/favicon_io%20(2)/android-chrome-192x192.png" alt="" className="h-11 w-11 rounded-xl" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-[#16324F]">Install AIF Portal</p>

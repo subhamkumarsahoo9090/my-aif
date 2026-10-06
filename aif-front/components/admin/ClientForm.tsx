@@ -385,7 +385,7 @@ export default function ClientForm() {
   );
 }
 
-const cardClass = "rounded-2xl border border-[#E6EDF5] bg-white p-5 shadow-[0_8px_24px_rgba(20,50,90,0.05)]";
+const cardClass = "rounded-2xl border border-[#E6EDF5] bg-white p-4 shadow-[0_8px_24px_rgba(20,50,90,0.05)] sm:p-5";
 const fieldClass =
   "w-full rounded-xl border border-[#E3E8EF] bg-white py-2.5 pl-3 pr-3 text-sm text-foreground outline-none placeholder:text-[#9AA3AF] focus:border-[#F97316]";
 const outlineButtonClass =

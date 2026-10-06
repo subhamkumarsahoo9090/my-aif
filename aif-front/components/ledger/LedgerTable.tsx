@@ -146,7 +146,7 @@ export default function LedgerTable() {
               </label>
               <button
                 type="button"
-                className={outlineButtonClass}
+                className={`${outlineButtonClass} w-full sm:w-auto`}
                 onClick={() => {
                   setStart("");
                   setEnd("");
@@ -154,10 +154,10 @@ export default function LedgerTable() {
               >
                 Clear
               </button>
-              <button type="button" className={outlineButtonClass} disabled={visible.length === 0} onClick={exportCsv}>
+              <button type="button" className={`${outlineButtonClass} w-full sm:w-auto`} disabled={visible.length === 0} onClick={exportCsv}>
                 Export CSV
               </button>
-              <button type="button" className={orangeButtonClass} disabled={visible.length === 0} onClick={exportExcel}>
+              <button type="button" className={`${orangeButtonClass} w-full sm:w-auto`} disabled={visible.length === 0} onClick={exportExcel}>
                 Export Excel
               </button>
             </div>

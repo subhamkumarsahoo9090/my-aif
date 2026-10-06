@@ -37,7 +37,7 @@ const pages: Record<string, { title: string; description: string; tone: string }
 };
 
 export default function DashboardShell({ children }: { children: ReactNode }) {
-  const { user, ready, sessionExpired, acknowledgeSessionExpiry, logout } = useApp();
+  const { user, ready, sessionExpired, acknowledgeSessionExpiry, logout, sidebarOpen, toggleSidebar } = useApp();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -93,6 +93,19 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       <SectionBar
         title={pathname === "/dashboard" ? `Hello, ${user.name}` : page.title}
         description={page.description}
+        start={
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl bg-white/15 md:hidden"
+            aria-label="Open menu"
+            aria-expanded={sidebarOpen}
+            onClick={toggleSidebar}
+          >
+            <span className="block h-0.5 w-4 bg-white" />
+            <span className="block h-0.5 w-4 bg-white" />
+            <span className="block h-0.5 w-4 bg-white" />
+          </button>
+        }
         icon={
           pathname === "/dashboard" ? <ChartIcon />
           : pathname === "/profile" ? <UserIcon />
@@ -117,14 +130,14 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
               onClick={() => {
                 void logout("manual").then(() => router.replace("/login"));
               }}
-              className="rounded-full border border-white/35 bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20"
+              className="rounded-full border border-white/35 bg-white/10 px-3 py-2 text-sm font-medium text-white hover:bg-white/20 sm:px-4"
             >
               Log out
             </button>
           </div>
         }
       />
-      <div className="min-h-0 flex-1 overflow-y-auto bg-[#F4F7FB] p-4 md:p-6">
+      <div className="min-h-0 flex-1 overflow-y-auto bg-[#F4F7FB] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4 md:p-6">
         {children}
       </div>
     </div>
