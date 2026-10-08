@@ -32,7 +32,9 @@ export default function PageChrome({
 
   const frame = (
     <>
-      {showTopNav ? topNav : null}
+      {showTopNav ? (
+        homeBackground ? <div className="hidden lg:block">{topNav}</div> : topNav
+      ) : null}
       <div className="flex min-h-0 flex-1">
         {showSidebar ? sidebar : null}
         <div className="flex min-w-0 flex-1 flex-col">{children}</div>
@@ -53,19 +55,25 @@ export default function PageChrome({
     <div
       className={
         homeBackground
-          ? "flex h-auto min-h-dvh flex-col md:h-dvh md:overflow-hidden"
+          ? "flex h-auto min-h-dvh flex-col lg:h-dvh lg:overflow-hidden"
           : "flex min-h-full flex-1 flex-col"
       }
     >
       {homeBackground ? (
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
           <img
+            src="/backp.png"
+            alt=""
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center lg:hidden"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgba(52,106,165,0.28)_0%,rgba(198,218,244,0.08)_48%,rgba(253,209,162,0.16)_100%)] lg:hidden" />
+          <img
             src="/backt.png"
             alt=""
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-top"
+            className="pointer-events-none absolute inset-0 hidden h-full w-full object-cover object-top lg:block"
           />
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(8,28,64,0.38)_0%,rgba(8,28,64,0.16)_34%,transparent_62%)]" />
-          <div className="relative flex min-h-0 flex-1 flex-col">{frame}</div>
+          <div className="pointer-events-none absolute inset-0 hidden bg-[linear-gradient(90deg,rgba(8,28,64,0.38)_0%,rgba(8,28,64,0.16)_34%,transparent_62%)] lg:block" />
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto lg:overflow-hidden">{frame}</div>
         </div>
       ) : loginBackground ? (
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -82,7 +90,7 @@ export default function PageChrome({
       )}
       {showFooter ? (
         homeBackground ? (
-          <div className="shrink-0 [&_.footer-bar]:py-2 [&_.footer-blurb]:mt-2 [&_.footer-blurb]:text-xs [&_.footer-blurb]:leading-5 [&_.footer-grid]:gap-4 [&_.footer-grid]:px-6 [&_.footer-grid]:py-3 [&_.footer-grid]:lg:gap-6 [&_.footer-grid]:lg:py-3 [&_.footer-links]:mt-2 [&_.footer-links]:gap-1.5 [&_.footer-social]:mt-2 [&_footer]:mt-0">
+          <div className="hidden shrink-0 lg:block [&_.footer-bar]:py-2 [&_.footer-blurb]:mt-2 [&_.footer-blurb]:text-xs [&_.footer-blurb]:leading-5 [&_.footer-grid]:gap-4 [&_.footer-grid]:px-6 [&_.footer-grid]:py-3 [&_.footer-grid]:lg:gap-6 [&_.footer-grid]:lg:py-3 [&_.footer-links]:mt-2 [&_.footer-links]:gap-1.5 [&_.footer-social]:mt-2 [&_footer]:mt-0">
             {footer}
           </div>
         ) : (

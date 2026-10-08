@@ -32,6 +32,9 @@ import {
 import { authorizeAdmin } from "../lib/admin-guard.js";
 import { openAdminSession, readAdminSession } from "../lib/session.js";
 import { readCreateClientBody } from "../lib/client-validation.js";
+import { getPortal } from "../lib/portal-store.js";
+import { statementDownloadName } from "../lib/pdf.js";
+import { renderStatement } from "../lib/statement-pdf.js";
 import { denied, fail, ok } from "./result.js";
 
 function text(body, key) {
@@ -286,6 +289,35 @@ export async function createReport(body) {
   });
   if (!run) return fail("Client not found.", 404);
   return ok({ run });
+}
+
+export async function reportFile(code, query) {
+  const { blocked } = await adminOf("admin", "reports");
+  if (blocked) return blocked;
+  const portal = await getPortal(code);
+  if (!portal) return fail("Client not found.", 404);
+
+  const statementId = typeof query?.statementId === "string" ? query.statementId : "";
+  const period = typeof query?.period === "string" ? query.period : "";
+  const statementType = typeof query?.statementType === "string" ? query.statementType : "";
+  const fileBit = statementType.replace(/\s+/g, "-");
+  const statement = (statementId ? portal.statements.find((item) => item.id === statementId) : undefined)
+    ?? portal.statements.find((item) => {
+      if (!period || item.period !== period) return false;
+      if (item.statementType && statementType) return item.statementType === statementType;
+      return fileBit ? item.fileName.includes(fileBit) : true;
+    });
+  if (!statement) return fail("That statement has no PDF. Generate a PDF record first.", 404);
+
+  const fileStatement = statement.statementType
+    ? statement
+    : { ...statement, statementType: statementType || "Portfolio" };
+  return {
+    ok: true,
+    file: true,
+    bytes: renderStatement(portal, fileStatement),
+    disposition: `attachment; filename="${statementDownloadName(statement.fileName)}"`,
+  };
 }
 
 export async function navHistory(query) {

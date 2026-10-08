@@ -1,36 +1,24 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AIF Client Portal
 
-## Getting Started
-
-First, run the development server:
+Investor and admin frontend for the Wealth Discovery AIF portal. The API lives in `aif-back`.
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). The API is expected at `http://localhost:8089`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Admin reports
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+[http://localhost:3000/admin/reports](http://localhost:3000/admin/reports) is where fund staff issue an investor statement. Admin and super admin can open it when the Reports module is allowed for their role.
 
-## Learn More
+The page has two parts.
 
-To learn more about Next.js, take a look at the following resources:
+**Generate statement.** Pick a client, a statement type (Capital account, Holdings, or Portfolio), and a period such as `Q2 FY 2026-27`. The schedule field is Daily, Weekly, or Monthly.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Generate PDF record** saves a statement on that investor’s account and starts the PDF download in the browser. Capital account lists the ledger, Holdings lists the units, and Portfolio lists the valuation totals. The investor can also preview or download it on [http://localhost:3000/statements](http://localhost:3000/statements). The file is built from the client’s current records when it is opened.
+- **Schedule delivery** does not create a file and does not send email. It stores a delivery row with status `scheduled` and the chosen frequency, so staff can see that a repeat delivery was requested.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**Delivery history.** Lists each generate and schedule action: client, statement type, period, mode, frequency, status, and date. A generated row has **Download PDF**. A scheduled row does not, because no file was created. A new row is also written to the audit trail.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Both actions need a client, a statement type, and a period. If the trading code is not on file, the request is rejected.

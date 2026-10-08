@@ -53,6 +53,7 @@ export type StatementRun = {
   status: "generated" | "sent" | "scheduled";
   at: string;
   actor: string;
+  statementId?: string;
 };
 
 export type AuditEntry = {
@@ -851,12 +852,14 @@ export async function queueStatement(input: {
   const portal = await getPortal(input.clientCode);
   if (!portal) return null;
   const at = stamp();
+  const statementId = `stmt-${Date.now()}`;
   if (input.mode === "manual") {
     await addGeneratedStatement(input.clientCode, {
-      id: `stmt-${Date.now()}`,
+      id: statementId,
       period: input.period,
       issuedOn: at.slice(0, 10),
       fileName: `${input.clientCode}-${input.statementType.replace(/\s+/g, "-")}.pdf`,
+      statementType: input.statementType,
     });
   }
   const run: StatementRun = {
@@ -870,6 +873,7 @@ export async function queueStatement(input: {
     status: input.mode === "scheduled" ? "scheduled" : "generated",
     at,
     actor: input.actor,
+    ...(input.mode === "manual" ? { statementId } : {}),
   };
   runs.unshift(run);
   await recordAudit({

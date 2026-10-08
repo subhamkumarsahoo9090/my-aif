@@ -62,6 +62,11 @@ export const api = {
     roles: route("/api/admin/roles"),
     imports: route("/api/admin/imports"),
     reports: route("/api/admin/reports"),
+    reportFile(code, period, statementType, statementId) {
+      const params = new URLSearchParams({ period, statementType });
+      if (statementId) params.set("statementId", statementId);
+      return route(`/api/admin/reports/${encodeURIComponent(code)}/file?${params}`);
+    },
     nav: route("/api/admin/nav"),
     audit: route("/api/admin/audit"),
     platform: route("/api/admin/platform"),

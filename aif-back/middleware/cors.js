@@ -19,5 +19,6 @@ export function corsMiddleware() {
       callback(new Error("Origin not allowed"));
     },
     credentials: true,
+    exposedHeaders: ["Content-Disposition"],
   });
 }

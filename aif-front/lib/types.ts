@@ -35,6 +35,7 @@ export type StatementMeta = {
   period: string;
   issuedOn: string;
   fileName: string;
+  statementType?: string;
 };
 
 export type PortfolioMetrics = {

@@ -1,5 +1,6 @@
 import { authorizePortal } from "../lib/guard.js";
 import { currentNav } from "../lib/portal-store.js";
+import { statementDownloadName } from "../lib/pdf.js";
 import { renderStatement } from "../lib/statement-pdf.js";
 import { denied, fail, ok } from "./result.js";
 
@@ -93,6 +94,6 @@ export async function statementFile(req) {
     ok: true,
     file: true,
     bytes: renderStatement(auth.portal, statement),
-    disposition: `${download ? "attachment" : "inline"}; filename="${statement.fileName}"`,
+    disposition: `${download ? "attachment" : "inline"}; filename="${statementDownloadName(statement.fileName)}"`,
   };
 }

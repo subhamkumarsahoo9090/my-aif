@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import TypedHeadline from "@/components/auth/TypedHeadline";
+import LoginScreen from "@/components/auth/LoginScreen";
 import HomeActions from "@/components/home/HomeActions";
 import { pageMetadata, projectManager } from "@/config/projectmanager";
 
@@ -43,7 +44,11 @@ export default function HomePage() {
   const { app } = projectManager;
 
   return (
-    <div className="flex flex-1 flex-col">
+    <>
+      <div className="flex flex-1 flex-col lg:hidden">
+        <LoginScreen />
+      </div>
+      <div className="hidden flex-1 flex-col lg:flex">
       <div className="flex w-full flex-1 flex-col px-6 pb-4 pt-3 sm:px-8 sm:pt-4 lg:px-10">
         <div>
           <p className="text-xs font-semibold tracking-[0.16em] text-white drop-shadow-[0_1px_6px_rgba(8,24,56,0.55)]">
@@ -90,7 +95,8 @@ export default function HomePage() {
           ))}
         </ul>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

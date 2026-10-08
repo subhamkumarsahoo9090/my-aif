@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: projectManager.app.name,
     short_name: "AIF Portal",
     description: projectManager.app.description,
-    start_url: "/",
+    start_url: "/login",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
@@ -14,19 +14,19 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#1B3C6C",
     icons: [
       {
-        src: "/favicon_io%20(2)/android-chrome-192x192.png",
+        src: "/icons/icon-192.png",
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/favicon_io%20(2)/android-chrome-512x512.png",
+        src: "/icons/icon-512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/favicon_io%20(2)/apple-touch-icon.png",
+        src: "/icons/apple-touch-icon.png",
         sizes: "180x180",
         type: "image/png",
         purpose: "any",

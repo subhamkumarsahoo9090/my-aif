@@ -21,6 +21,7 @@ router.get("/imports", admin.imports);
 router.post("/imports", admin.importFile);
 router.get("/reports", admin.reports);
 router.post("/reports", admin.createReport);
+router.get("/reports/:code/file", admin.reportFile);
 router.get("/nav", admin.navHistory);
 router.post("/nav", admin.addNav);
 router.get("/audit", admin.audit);
