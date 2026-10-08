@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import Logo, { type BrandDisplay } from "@/components/layout/Logo";
 import { useApp } from "@/context/AppProvider";
@@ -20,7 +20,8 @@ export default function SideNav({
   brand: { name: string; logo: string; display: BrandDisplay };
 }) {
   const pathname = usePathname();
-  const { sidebarOpen, setSidebarOpen } = useApp();
+  const router = useRouter();
+  const { user, logout, sidebarOpen, setSidebarOpen } = useApp();
 
   return (
     <>
@@ -33,16 +34,16 @@ export default function SideNav({
         />
       ) : null}
       <aside
-        className={`portal-sidebar fixed inset-y-0 left-0 z-40 flex h-dvh w-64 shrink-0 flex-col overflow-y-auto border-r border-white/10 transition-transform md:static md:translate-x-0 ${
+        className={`portal-sidebar fixed inset-y-0 left-0 z-40 flex h-dvh w-64 shrink-0 flex-col overflow-hidden border-r border-white/10 transition-transform md:static md:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="px-4 py-4">
+        <div className="shrink-0 px-4 py-4">
           <Link href="/dashboard" onClick={() => setSidebarOpen(false)} className="inline-flex">
             <Logo name={brand.name} logo={brand.logo} display={brand.display} />
           </Link>
         </div>
-        <nav className="flex flex-1 flex-col gap-1 px-3">
+        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3">
           {links.map((link) => {
             const active = pathname === link.href;
             return (
@@ -79,9 +80,41 @@ export default function SideNav({
             );
           })}
         </nav>
+        {user ? (
+          <div className="shrink-0 border-t border-white/10 p-3 md:hidden">
+            <div className="flex min-w-0 items-center gap-2.5 rounded-2xl bg-white/15 py-2 pl-2 pr-3">
+              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20 text-xs font-semibold text-white">
+                {initials(user.name)}
+              </span>
+              <div className="min-w-0 text-left">
+                <p className="truncate text-sm font-semibold text-white">{user.name}</p>
+                <p className="truncate text-xs text-white/75">{user.clientCode}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSidebarOpen(false);
+                void logout("manual").then(() => router.replace("/login"));
+              }}
+              className="mt-2 w-full rounded-full border border-white/35 bg-white/10 px-3 py-2 text-sm font-medium text-white hover:bg-white/20"
+            >
+              Log out
+            </button>
+          </div>
+        ) : null}
       </aside>
     </>
   );
+}
+
+function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
 }
 
 function NavIcon({ name }: { name: "chart" | "user" | "list" | "grid" | "doc" }) {

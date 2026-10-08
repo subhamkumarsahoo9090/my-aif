@@ -114,6 +114,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           : pathname === "/statements" ? <DocIcon />
           : undefined
         }
+        endClassName="hidden shrink-0 items-center justify-end gap-2 md:flex"
         end={
           <div className="flex shrink-0 items-center gap-2">
             <div className="flex min-w-0 items-center gap-2.5 rounded-2xl bg-white/15 py-1.5 pl-1.5 pr-3">

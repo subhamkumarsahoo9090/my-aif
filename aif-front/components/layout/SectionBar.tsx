@@ -6,12 +6,14 @@ export default function SectionBar({
   start,
   icon,
   end,
+  endClassName,
 }: {
   title: string;
   description: string;
   start?: ReactNode;
   icon?: ReactNode;
   end?: ReactNode;
+  endClassName?: string;
 }) {
   return (
     <header className="portal-topbar flex shrink-0 flex-col gap-3 px-3 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-white sm:px-6 sm:py-4 lg:flex-row lg:items-center lg:justify-between">
@@ -25,7 +27,9 @@ export default function SectionBar({
           <p className="mt-0.5 line-clamp-2 max-w-2xl text-xs leading-5 text-white/80 sm:text-sm lg:line-clamp-none">{description}</p>
         </div>
       </div>
-      {end ? <div className="flex shrink-0 items-center justify-end gap-2">{end}</div> : null}
+      {end ? (
+        <div className={endClassName ?? "flex shrink-0 items-center justify-end gap-2"}>{end}</div>
+      ) : null}
     </header>
   );
 }
