@@ -1,0 +1,17 @@
+---
+description: Express API conventions for aif-back
+globs: aif-back/**/*.{ts,js}
+alwaysApply: false
+---
+
+# Backend (`aif-back`)
+
+- Start without `VERCEL` in the env: `Remove-Item Env:VERCEL -ErrorAction SilentlyContinue` then `node .\node_modules\tsx\dist\cli.mjs index.ts` from `aif-back`. `.env` has `PORT=8089`.
+- If `index.ts` is not in watch mode, **kill and restart** after code changes. Confirm with `netstat -ano | findstr ":8089"`.
+- Routes: `routes/*.js` → `controllers` → `functions`. Auth cookie is `aif_session`; Bearer is treated as that cookie.
+- CORS: credentials on, expose `Content-Disposition`.
+- Types in `aif-back/lib/types.ts` must stay in sync with `aif-front/lib/types.ts` by copy, not import.
+- PDFs: custom engine `lib/pdf.ts` + `lib/statement-pdf.ts`. Logo is `aif-back/assets/company.png`. Prefix downloads with `Wealth-Discovery-`.
+- Admin file: `GET /api/admin/reports/:code/file`. Investor file: `GET /api/portal/statements/:id`. Bytes are built on demand, not stored.
+- Inactive clients cannot sign in; existing sessions 403.
+- Never log or echo `MONGODB_URI`. Load `.env` before any store import in one-off scripts.

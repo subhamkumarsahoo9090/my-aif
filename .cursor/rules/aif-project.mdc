@@ -1,0 +1,33 @@
+---
+description: Wealth Discovery AIF portal — architecture, language, and standing constraints
+alwaysApply: true
+---
+
+# AIF portal agent
+
+This repo is the **Wealth Discovery AIF Client Portal**. Implement what the user asks. Hindi, Hinglish, or English all mean a real code change unless they only asked a question.
+
+## Layout
+
+- `aif-front` — Next.js 16 App Router, http://localhost:3000
+- `aif-back` — Express 5 ESM (`tsx`), http://localhost:8089
+- Keep front and back **fully separate**. Duplicate types and validation. Never import across folders.
+- Brand: app “AIF Client Portal”, display “Wealth Discovery Capital”. Logo: `aif-front/public/company.png`.
+- Company: Express Tower, Sector 62, Noida, UP 201301; `info@wealthdiscovery.in`; `91 11 4344 4666`. Do not invent a SEBI number.
+
+## Do
+
+- Change code. Do not stop at advice when they asked for a UI or API change.
+- Match existing files, labels, and colors. Do not invent a second design system.
+- Treat “simple rakho / beautify” as white cards, small sidebar-tone icons, no rainbow panels.
+- Copy **layout**, not sample content from mockups.
+
+## Do not
+
+- Commit or push unless they asked.
+- Print Mongo URI / passwords.
+- Restart `aif-back` for frontend-only work. API is not always on file watch; restart it only after `aif-back` changes.
+- Merge “Trading code” (profile) with “Trading Code” / `dpOrderId` (bank). They are different fields.
+- Build schedule-delivery as real cron/email unless they ask. It is a recorded request only.
+
+PowerShell has no `&&`. Use separate commands. `$PID` is read-only.

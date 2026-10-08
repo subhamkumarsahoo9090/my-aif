@@ -1,5 +1,6 @@
 "use client";
 
+import { LuLayoutGrid } from "react-icons/lu";
 import LoadError from "@/components/ui/LoadError";
 import PnlValue from "@/components/ui/PnlValue";
 import Skeleton from "@/components/ui/Skeleton";
@@ -27,10 +28,10 @@ export default function HoldingsTable() {
       {status === "error" ? <LoadError onRetry={reload} /> : null}
 
       {status === "ready" && data ? (
-        <section className={cardClass}>
+        <section className={`${cardClass} bg-white`}>
           <div className="flex items-center gap-3 px-5 pt-5">
-            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-[#2E5FA5]">
-              <GridIcon />
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-holdings-bg)] text-[var(--pm-nav-holdings-color)]">
+              <LuLayoutGrid className="h-4 w-4" aria-hidden="true" />
             </span>
             <div>
               <h2 className="text-[15px] font-semibold text-[#16324F]">Holdings</h2>
@@ -120,18 +121,7 @@ export default function HoldingsTable() {
   );
 }
 
-const cardClass = "rounded-2xl border border-[#E6EDF5] bg-white shadow-[0_8px_24px_rgba(20,50,90,0.05)]";
-
-function GridIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <rect x="4" y="4" width="6.5" height="6.5" rx="1.2" />
-      <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.2" />
-      <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.2" />
-      <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.2" />
-    </svg>
-  );
-}
+const cardClass = "rounded-2xl border border-[#E6EDF5] shadow-[0_8px_24px_rgba(20,50,90,0.04)]";
 
 function rowNav(row: Holding, latestNav: number | null) {
   if (latestNav != null && Number.isFinite(latestNav)) return latestNav;

@@ -1,37 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { LuChartLine, LuChartPie } from "react-icons/lu";
 
 type Point = { date: string; label: string; value: number };
 type Slice = { name: string; marketValue: number };
 
-const chartColors = ["#1D4E89", "#F97316", "#2E5FA5", "#F6B37A"];
+const chartColors = ["#2E5FA5", "#4482D8", "#CF933C", "#7BA6E4"];
 
 function formatAxis(value: number) {
   const abs = Math.abs(value);
   if (abs >= 10000000) return `₹${(value / 10000000).toFixed(1)} Cr`;
   if (abs >= 100000) return `₹${(value / 100000).toFixed(1)} L`;
   return `₹${Math.round(value)}`;
-}
-
-const cardClass = "rounded-2xl border border-[#E6EDF5] bg-white shadow-[0_8px_24px_rgba(20,50,90,0.05)]";
-
-function ChartIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="M4 19V5M4 19h16" strokeLinecap="round" />
-      <path d="M7 15l4-4 3 2 5-6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function PieIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5H12V3.5Z" strokeLinejoin="round" />
-      <path d="M13.5 3.8A8.5 8.5 0 0 1 20.2 10.5H13.5V3.8Z" strokeLinejoin="round" />
-    </svg>
-  );
 }
 
 function shortName(name: string) {
@@ -53,11 +34,11 @@ export default function PortfolioCharts({ trend, holdings }: { trend: Point[]; h
 
   return (
     <div className="mt-4 grid gap-4 lg:grid-cols-3">
-      <section className={`${cardClass} p-5 lg:col-span-2`}>
+      <section className="rounded-2xl border border-[#E6EDF5] bg-white p-5 shadow-[0_8px_24px_rgba(20,50,90,0.04)] lg:col-span-2">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-[#2E5FA5]">
-              <ChartIcon />
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-holdings-bg)] text-[var(--pm-nav-holdings-color)]">
+              <LuChartLine className="h-4 w-4" aria-hidden="true" />
             </span>
             <div>
               <h2 className="text-[15px] font-semibold text-[#16324F]">Portfolio valuation trend</h2>
@@ -67,14 +48,14 @@ export default function PortfolioCharts({ trend, holdings }: { trend: Point[]; h
           <div className="flex rounded-full bg-[#F4F7FB] p-1 text-xs font-semibold">
             <button
               type="button"
-              className={`rounded-full px-3 py-1 ${range === "1y" ? "bg-[#F97316] text-white" : "text-[#5C6B7A]"}`}
+              className={`rounded-full px-3 py-1 ${range === "1y" ? "bg-[var(--pm-nav-dashboard-color)] text-white" : "text-[#5C6B7A]"}`}
               onClick={() => setRange("1y")}
             >
               1Y
             </button>
             <button
               type="button"
-              className={`rounded-full px-3 py-1 ${range === "all" ? "bg-[#F97316] text-white" : "text-[#5C6B7A]"}`}
+              className={`rounded-full px-3 py-1 ${range === "all" ? "bg-[var(--pm-nav-dashboard-color)] text-white" : "text-[#5C6B7A]"}`}
               onClick={() => setRange("all")}
             >
               All
@@ -83,10 +64,10 @@ export default function PortfolioCharts({ trend, holdings }: { trend: Point[]; h
         </div>
         <TrendChart points={points} />
       </section>
-      <section className={`${cardClass} p-5`}>
+      <section className="rounded-2xl border border-[#E6EDF5] bg-white p-5 shadow-[0_8px_24px_rgba(20,50,90,0.04)]">
         <div className="flex items-center gap-3">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#FFF1E6] text-[#F97316]">
-            <PieIcon />
+          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-statements-bg)] text-[var(--pm-nav-statements-color)]">
+            <LuChartPie className="h-4 w-4" aria-hidden="true" />
           </span>
           <div>
             <h2 className="text-[15px] font-semibold text-[#16324F]">Asset allocation</h2>
@@ -130,10 +111,10 @@ function TrendChart({ points }: { points: Point[] }) {
           </g>
         );
       })}
-      <polyline fill="none" stroke="#F97316" strokeWidth="3" points={line} strokeLinejoin="round" strokeLinecap="round" />
+      <polyline fill="none" stroke="#2E5FA5" strokeWidth="3" points={line} strokeLinejoin="round" strokeLinecap="round" />
       {coords.map((point) => (
         <g key={`${point.label}-${point.x}`}>
-          <circle cx={point.x} cy={point.y} r="4" fill="#ffffff" stroke="#F97316" strokeWidth="2" />
+          <circle cx={point.x} cy={point.y} r="4" fill="#ffffff" stroke="#2E5FA5" strokeWidth="2" />
           <text x={point.x} y={height - 8} textAnchor="middle" fontSize="11" fill="var(--pm-muted)">
             {point.label}
           </text>

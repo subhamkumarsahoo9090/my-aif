@@ -1,9 +1,24 @@
 "use client";
 
 import type { ReactNode } from "react";
+import {
+  LuBadgeCheck,
+  LuBriefcase,
+  LuCalendar,
+  LuCopy,
+  LuGlobe,
+  LuIdCard,
+  LuLandmark,
+  LuMail,
+  LuMapPin,
+  LuPhone,
+  LuShieldCheck,
+  LuUser,
+  LuUsers,
+} from "react-icons/lu";
 import LoadError from "@/components/ui/LoadError";
 import Skeleton from "@/components/ui/Skeleton";
-import StatusBadge from "@/components/ui/StatusBadge";
+import { useApp } from "@/context/AppProvider";
 import { usePortalResource } from "@/lib/use-portal-resource";
 import { api } from "@/config/endapi";
 import { bankList, nomineeList } from "@/lib/client-validation";
@@ -14,8 +29,6 @@ type ProfileResponse = {
   clientCode: string;
   profile: InvestorProfile;
 };
-
-const cardClass = "rounded-2xl border border-[#E6EDF5] bg-white shadow-[0_8px_24px_rgba(20,50,90,0.05)]";
 
 function shown(value: string | undefined) {
   return value?.trim() || "—";
@@ -30,61 +43,146 @@ function initials(name: string) {
     .join("");
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function ageYears(iso: string) {
+  const [year, month, day] = iso.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  const today = new Date();
+  let years = today.getFullYear() - year;
+  const currentMonth = today.getMonth() + 1;
+  if (currentMonth < month || (currentMonth === month && today.getDate() < day)) years -= 1;
+  if (years < 0 || years > 120) return null;
+  return years;
+}
+
+function dobLabel(iso: string) {
+  if (!iso) return "—";
+  const formatted = formatDob(iso);
+  const years = ageYears(iso);
+  return years === null ? formatted : `${formatted} (${years} yrs)`;
+}
+
+function CopyButton({ value }: { value: string }) {
+  const { pushToast } = useApp();
+  const text = value.trim();
+  if (!text || text === "—") return null;
+
   return (
-    <div className="rounded-xl border border-[#EEF2F6] bg-[#F8FAFC] px-3 py-2.5">
-      <dt className="text-[11px] font-medium uppercase tracking-wide text-[#7B8794]">{label}</dt>
-      <dd className="mt-1 text-sm font-semibold wrap-break-word text-[#16324F]">{value}</dd>
-    </div>
+    <button
+      type="button"
+      aria-label={`Copy ${text}`}
+      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[#8B97A8] hover:bg-white/80 hover:text-[#1B3C6C]"
+      onClick={() => {
+        void navigator.clipboard.writeText(text).then(
+          () => pushToast("Copied.", "success"),
+          () => pushToast("Could not copy that value."),
+        );
+      }}
+    >
+      <LuCopy className="h-3.5 w-3.5" aria-hidden="true" />
+    </button>
   );
 }
 
-function Section({
+function Panel({
   title,
-  hint,
   icon,
-  className = "",
+  chip,
   children,
 }: {
   title: string;
-  hint?: string;
   icon: ReactNode;
-  className?: string;
+  chip: string;
   children: ReactNode;
 }) {
   return (
-    <section className={`${cardClass} flex h-full flex-col p-5 ${className}`}>
-      <div className="mb-4 flex items-center gap-3">
-        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-[#2E5FA5]">{icon}</span>
-        <div>
-          <h2 className="text-[15px] font-semibold text-[#16324F]">{title}</h2>
-          {hint ? <p className="text-xs text-[#7B8794]">{hint}</p> : null}
-        </div>
+    <section className="flex h-full flex-col rounded-2xl border border-[#E6EDF5] bg-white p-4 shadow-[0_8px_24px_rgba(20,50,90,0.04)] sm:p-5">
+      <div className="mb-1 flex items-center gap-2.5">
+        <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${chip}`}>{icon}</span>
+        <h2 className="text-sm font-semibold text-[#16324F]">{title}</h2>
       </div>
       {children}
     </section>
   );
 }
 
-function BankCard({ bank, index }: { bank: BankAccount; index: number }) {
+function InfoRow({
+  label,
+  value,
+  copy = false,
+  icon,
+}: {
+  label: string;
+  value: string;
+  copy?: boolean;
+  icon?: ReactNode;
+}) {
   return (
-    <article className="rounded-xl border border-[#EEF2F6] bg-[#F8FAFC] p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-[#16324F]">{shown(bank.bankName)}</p>
-        <StatusBadge tone={bank.isPrimary ? "success" : "neutral"}>
-          {bank.isPrimary ? "Primary" : `Account ${index + 1}`}
-        </StatusBadge>
-      </div>
-      <dl className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-        <Field label="Account holder" value={shown(bank.accountHolderName)} />
-        <Field label="Account number" value={shown(bank.accountNumber)} />
-        <Field label="IFSC code" value={shown(bank.ifsccode)} />
-        <Field label="Bank city" value={shown(bank.bankCity)} />
-        <Field label="Account type" value={shown(bank.accountType)} />
-        <Field label="UPI ID" value={shown(bank.upiId)} />
-        <Field label="MICR code" value={shown(bank.micrCode)} />
-      </dl>
-    </article>
+    <div className="flex items-start justify-between gap-3 border-b border-[#E6EDF5]/80 py-2.5 last:border-b-0">
+      <dt className="flex shrink-0 items-center gap-2 pt-0.5 text-sm text-[#7B8794]">
+        {icon ? <span className="text-[#8B97A8]">{icon}</span> : null}
+        {label}
+      </dt>
+      <dd className="flex min-w-0 items-start justify-end gap-1 text-right text-sm font-semibold text-[#16324F]">
+        <span className="wrap-break-word">{value}</span>
+        {copy ? <CopyButton value={value} /> : null}
+      </dd>
+    </div>
+  );
+}
+
+function MiniField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-[#F8FAFC] px-3 py-2.5">
+      <p className="text-xs text-[#7B8794]">{label}</p>
+      <p className="mt-1 text-sm font-semibold wrap-break-word text-[#16324F]">{value}</p>
+    </div>
+  );
+}
+
+function StatusPill({ ok, children }: { ok: boolean; children: ReactNode }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
+        ok
+          ? "border-[#B3CCEF] bg-[var(--pm-nav-dashboard-bg)] text-[var(--pm-nav-dashboard-color)]"
+          : "border-[#E7C99A] bg-[var(--pm-nav-ledger-bg)] text-[var(--pm-nav-ledger-color)]"
+      }`}
+    >
+      {ok ? <LuBadgeCheck className="h-3.5 w-3.5" aria-hidden="true" /> : null}
+      {children}
+    </span>
+  );
+}
+
+function ComplianceLine({
+  label,
+  ok,
+  yes,
+  no,
+  icon,
+}: {
+  label: string;
+  ok: boolean;
+  yes: string;
+  no: string;
+  icon: ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-[#E6EDF5]/80 py-2.5 last:border-b-0">
+      <dt className="flex items-center gap-2 text-sm text-[#5C6B7A]">
+        <span className="text-[#7B8794]">{icon}</span>
+        {label}
+      </dt>
+      <dd>
+        <span
+          className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+            ok ? "bg-[var(--pm-nav-dashboard-bg)] text-[var(--pm-nav-dashboard-color)]" : "bg-[var(--pm-nav-ledger-bg)] text-[var(--pm-nav-ledger-color)]"
+          }`}
+        >
+          {ok ? yes : no}
+        </span>
+      </dd>
+    </div>
   );
 }
 
@@ -94,11 +192,18 @@ export default function ProfileCard() {
   return (
     <div className="w-full">
       {status === "loading" ? (
-        <div className="grid gap-4 lg:grid-cols-2" aria-busy="true">
-          <Skeleton className="h-28 lg:col-span-2" />
-          {Array.from({ length: 4 }, (_, index) => (
-            <Skeleton key={index} className="h-44" />
-          ))}
+        <div className="grid gap-4" aria-busy="true">
+          <Skeleton className="h-28" />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }, (_, index) => (
+              <Skeleton key={index} className="h-20" />
+            ))}
+          </div>
+          <div className="grid gap-4 xl:grid-cols-3">
+            {Array.from({ length: 6 }, (_, index) => (
+              <Skeleton key={index} className="h-56" />
+            ))}
+          </div>
         </div>
       ) : null}
 
@@ -113,177 +218,194 @@ function ProfileView({ profile }: { profile: InvestorProfile }) {
   const nominees = nomineeList(profile);
   const banks = bankList(profile);
   const primary = banks.find((item) => item.isPrimary) ?? banks[0];
+  const active = profile.status === "active";
 
   return (
     <div className="grid gap-4">
-      <section className={`${cardClass} flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between`}>
-        <div className="flex min-w-0 items-center gap-4">
-          <span className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#E7F0FF] text-lg font-semibold text-[#1D4E89]">
-            {initials(profile.fullName)}
-          </span>
-          <div className="min-w-0">
-            <h2 className="truncate text-lg font-semibold text-[#16324F]">{profile.fullName}</h2>
-            <p className="mt-0.5 text-sm text-[#7B8794]">
-              {profile.tradingCode}
-              <span className="px-1.5 text-[#C5CED8]">·</span>
-              {shown(profile.pan)}
-            </p>
+      <section className="rounded-2xl border border-[#E6EDF5] bg-white p-4 shadow-[0_8px_24px_rgba(20,50,90,0.05)] sm:p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            <span className="inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#1B3C6C] text-lg font-semibold text-white">
+              {initials(profile.fullName)}
+            </span>
+            <div className="min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
+                <h2 className="truncate text-xl font-bold tracking-tight text-[#16324F]">{profile.fullName}</h2>
+                {active ? (
+                  <LuBadgeCheck className="h-5 w-5 shrink-0 text-[var(--pm-nav-dashboard-color)]" aria-hidden="true" />
+                ) : null}
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-[#7B8794]">
+                <span>{profile.tradingCode}</span>
+                <span aria-hidden="true" className="text-[#C5CED8]">·</span>
+                <span>{shown(profile.pan)}</span>
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                    active ? "bg-[var(--pm-nav-dashboard-bg)] text-[var(--pm-nav-dashboard-color)]" : "bg-[var(--pm-nav-profile-bg)] text-[var(--pm-nav-profile-color)]"
+                  }`}
+                >
+                  {active ? "Active client" : "Inactive"}
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <StatusBadge tone={profile.kra ? "success" : "warning"}>
-            KRA {profile.kra ? "Verified" : "Pending"}
-          </StatusBadge>
-          <StatusBadge tone={profile.fatca ? "success" : "warning"}>
-            FATCA {profile.fatca ? "Yes" : "No"}
-          </StatusBadge>
+          <div className="flex flex-wrap gap-2 lg:justify-end">
+            <StatusPill ok={profile.kra}>KRA {profile.kra ? "Verified" : "Pending"}</StatusPill>
+            <StatusPill ok={profile.fatca}>FATCA {profile.fatca ? "Yes" : "No"}</StatusPill>
+          </div>
         </div>
       </section>
 
-      <div className="grid items-start gap-4 lg:grid-cols-2">
-        <Section title="Basic details" icon={<UserGlyph />}>
-          <dl className="grid gap-2 sm:grid-cols-2">
-            <Field label="Trading code" value={shown(profile.tradingCode)} />
-            <Field label="Trading Code" value={shown(primary?.dpOrderId)} />
-            <Field label="Full name" value={shown(profile.fullName)} />
-            <Field label="Date of birth" value={profile.dateOfBirth ? formatDob(profile.dateOfBirth) : "—"} />
-            <Field label="PAN" value={shown(profile.pan)} />
-          </dl>
-        </Section>
-
-        <Section title="Contact" icon={<MailGlyph />}>
-          <dl className="grid gap-2 sm:grid-cols-2">
-            <Field label="Mobile number" value={shown(profile.mobile)} />
-            <Field label="Email" value={shown(profile.email)} />
-          </dl>
-        </Section>
-
-        <Section title="Family and income" icon={<UsersGlyph />}>
-          <dl className="grid gap-2 sm:grid-cols-2">
-            <Field label="Father's name" value={shown(profile.fatherName)} />
-            <Field label="Mother's name" value={shown(profile.motherName)} />
-            <Field label="Occupation" value={shown(profile.occupation)} />
-            <Field label="Marital status" value={shown(profile.maritalStatus)} />
-            <Field label="Annual income" value={shown(profile.annualIncome)} />
-          </dl>
-        </Section>
-
-        <Section title="Address" hint="Registered address and pincode" icon={<PinGlyph />}>
-          <p className="rounded-xl border border-[#EEF2F6] bg-[#F8FAFC] px-3 py-3 text-sm font-semibold leading-6 text-[#16324F]">{shown(profile.address)}</p>
-        </Section>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatTile
+          label="Trading code"
+          value={shown(profile.tradingCode)}
+          copy
+          chip="bg-[var(--pm-nav-dashboard-bg)] text-[var(--pm-nav-dashboard-color)]"
+          icon={<LuUser className="h-4 w-4" aria-hidden="true" />}
+        />
+        <StatTile
+          label="PAN number"
+          value={shown(profile.pan)}
+          copy
+          chip="bg-[var(--pm-nav-holdings-bg)] text-[var(--pm-nav-holdings-color)]"
+          icon={<LuIdCard className="h-4 w-4" aria-hidden="true" />}
+        />
+        <StatTile
+          label="Date of birth"
+          value={profile.dateOfBirth ? dobLabel(profile.dateOfBirth) : "—"}
+          chip="bg-[var(--pm-nav-profile-bg)] text-[var(--pm-nav-profile-color)]"
+          icon={<LuCalendar className="h-4 w-4" aria-hidden="true" />}
+        />
+        <StatTile
+          label="Occupation"
+          value={shown(profile.occupation)}
+          chip="bg-[var(--pm-nav-ledger-bg)] text-[var(--pm-nav-ledger-color)]"
+          icon={<LuBriefcase className="h-4 w-4" aria-hidden="true" />}
+        />
       </div>
 
-      <div className="grid items-start gap-4 lg:grid-cols-5">
-        <Section title="Nominees" icon={<UsersGlyph />} className="lg:col-span-3">
+      <div className="grid items-start gap-4 xl:grid-cols-3">
+        <Panel title="Personal information" chip="bg-[var(--pm-nav-dashboard-bg)] text-[var(--pm-nav-dashboard-color)]" icon={<LuUser className="h-4 w-4" aria-hidden="true" />}>
+          <dl>
+            <InfoRow label="Full name" value={shown(profile.fullName)} />
+            <InfoRow label="Trading code" value={shown(profile.tradingCode)} copy />
+            <InfoRow label="Trading Code" value={shown(primary?.dpOrderId)} />
+            <InfoRow label="PAN number" value={shown(profile.pan)} copy />
+            <InfoRow label="Date of birth" value={profile.dateOfBirth ? formatDob(profile.dateOfBirth) : "—"} />
+          </dl>
+        </Panel>
+
+        <Panel title="Contact information" chip="bg-[var(--pm-nav-ledger-bg)] text-[var(--pm-nav-ledger-color)]" icon={<LuPhone className="h-4 w-4" aria-hidden="true" />}>
+          <dl>
+            <InfoRow label="Mobile number" value={shown(profile.mobile)} copy icon={<LuPhone className="h-4 w-4" aria-hidden="true" />} />
+            <InfoRow label="Email address" value={shown(profile.email)} copy icon={<LuMail className="h-4 w-4" aria-hidden="true" />} />
+            <InfoRow label="Address" value={shown(profile.address)} icon={<LuMapPin className="h-4 w-4" aria-hidden="true" />} />
+          </dl>
+        </Panel>
+
+        <Panel title="Compliance status" chip="bg-[var(--pm-nav-profile-bg)] text-[var(--pm-nav-profile-color)]" icon={<LuShieldCheck className="h-4 w-4" aria-hidden="true" />}>
+          <dl>
+            <ComplianceLine label="KRA status" ok={profile.kra} yes="Verified" no="Pending" icon={<LuShieldCheck className="h-4 w-4" aria-hidden="true" />} />
+            <ComplianceLine label="FATCA" ok={profile.fatca} yes="Yes" no="No" icon={<LuGlobe className="h-4 w-4" aria-hidden="true" />} />
+          </dl>
+        </Panel>
+
+        <Panel title="Family and income" chip="bg-[var(--pm-nav-holdings-bg)] text-[var(--pm-nav-holdings-color)]" icon={<LuUsers className="h-4 w-4" aria-hidden="true" />}>
+          <div className="grid grid-cols-2 gap-2">
+            <MiniField label="Father's name" value={shown(profile.fatherName)} />
+            <MiniField label="Mother's name" value={shown(profile.motherName)} />
+            <MiniField label="Marital status" value={shown(profile.maritalStatus)} />
+            <MiniField label="Annual income" value={shown(profile.annualIncome)} />
+          </div>
+        </Panel>
+
+        <Panel title="Nominees" chip="bg-[var(--pm-nav-dashboard-bg)] text-[var(--pm-nav-dashboard-color)]" icon={<LuShieldCheck className="h-4 w-4" aria-hidden="true" />}>
           {nominees.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-[#E3E8EF] px-3 py-6 text-center text-sm text-[#7B8794]">No nominee is on file.</p>
+            <p className="rounded-xl border border-dashed border-[#E3E8EF] px-3 py-8 text-center text-sm text-[#7B8794]">
+              No nominee is on file.
+            </p>
           ) : (
             <ul className="grid gap-2">
               {nominees.map((nominee, index) => (
-                <li key={`${nominee.name}-${index}`} className="flex items-center justify-between gap-3 rounded-xl border border-[#EEF2F6] bg-[#F8FAFC] px-3 py-2.5">
-                  <span className="text-sm font-semibold text-[#16324F]">{shown(nominee.name)}</span>
-                  <StatusBadge tone="neutral">{shown(nominee.relationship)}</StatusBadge>
+                <li key={`${nominee.name}-${index}`} className="flex items-center gap-3 rounded-xl bg-[#F8FAFC] px-3 py-2.5">
+                  <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1B3C6C] text-xs font-semibold text-white">
+                    {initials(nominee.name || "?")}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[#16324F]">{shown(nominee.name)}</p>
+                    <p className="truncate text-xs text-[#7B8794]">{shown(nominee.relationship)}</p>
+                  </div>
                 </li>
               ))}
             </ul>
           )}
-        </Section>
+        </Panel>
 
-        <Section title="Compliance" icon={<ShieldGlyph />} className="lg:col-span-2">
-          <dl className="grid gap-2">
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-[#EEF2F6] bg-[#F8FAFC] px-3 py-2.5">
-              <dt className="text-sm font-medium text-[#1B3C6C]">KRA status</dt>
-              <dd>
-                <StatusBadge tone={profile.kra ? "success" : "warning"}>
-                  {profile.kra ? "Verified" : "Pending"}
-                </StatusBadge>
-              </dd>
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-[#EEF2F6] bg-[#F8FAFC] px-3 py-2.5">
-              <dt className="text-sm font-medium text-[#1B3C6C]">FATCA status</dt>
-              <dd>
-                <StatusBadge tone={profile.fatca ? "success" : "warning"}>
-                  {profile.fatca ? "Yes" : "No"}
-                </StatusBadge>
-              </dd>
-            </div>
-          </dl>
-        </Section>
+        <Panel title="Bank details" chip="bg-[var(--pm-nav-statements-bg)] text-[var(--pm-nav-statements-color)]" icon={<LuLandmark className="h-4 w-4" aria-hidden="true" />}>
+          {banks.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-[#E3E8EF] px-3 py-8 text-center text-sm text-[#7B8794]">
+              No bank account is on file.
+            </p>
+          ) : (
+            <ul className="grid gap-3">
+              {banks.map((bank, index) => (
+                <BankBlock key={`${bank.accountNumber}-${index}`} bank={bank} index={index} />
+              ))}
+            </ul>
+          )}
+        </Panel>
       </div>
-
-      <Section title="Bank details" hint="Accounts linked to this trading code" icon={<BankGlyph />}>
-        {banks.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-[#E3E8EF] px-3 py-6 text-center text-sm text-[#7B8794]">No bank account is on file.</p>
-        ) : (
-          <div className="grid gap-3">
-            {banks.map((bank, index) => (
-              <BankCard key={`${bank.accountNumber}-${index}`} bank={bank} index={index} />
-            ))}
-          </div>
-        )}
-      </Section>
     </div>
   );
 }
 
-function Glyph({ children }: { children: ReactNode }) {
+function StatTile({
+  label,
+  value,
+  copy = false,
+  chip,
+  icon,
+}: {
+  label: string;
+  value: string;
+  copy?: boolean;
+  chip: string;
+  icon: ReactNode;
+}) {
   return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      {children}
-    </svg>
+    <article className="flex items-center gap-3 rounded-2xl border border-[#E6EDF5] bg-white px-4 py-3.5 shadow-[0_8px_24px_rgba(20,50,90,0.04)]">
+      <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${chip}`}>
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-[#7B8794]">{label}</p>
+        <p className="truncate text-sm font-bold text-[#16324F]">{value}</p>
+      </div>
+      {copy ? <CopyButton value={value} /> : null}
+    </article>
   );
 }
 
-function UserGlyph() {
+function BankBlock({ bank, index }: { bank: BankAccount; index: number }) {
   return (
-    <Glyph>
-      <circle cx="12" cy="8" r="3" />
-      <path d="M5.5 19.2c1.3-2.7 3.5-4 6.5-4s5.2 1.3 6.5 4" strokeLinecap="round" />
-    </Glyph>
+    <li className="rounded-xl bg-[#F8FAFC] px-3 py-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="min-w-0 truncate text-sm font-semibold text-[#16324F]">{shown(bank.bankName)}</p>
+        <span className="shrink-0 rounded-full bg-[#F4F7FB] px-2 py-0.5 text-[11px] font-semibold text-[#1B3C6C]">
+          {bank.isPrimary ? "Primary" : `Account ${index + 1}`}
+        </span>
+      </div>
+      <dl>
+        <InfoRow label="Account holder" value={shown(bank.accountHolderName)} />
+        <InfoRow label="Account number" value={shown(bank.accountNumber)} copy />
+        <InfoRow label="IFSC code" value={shown(bank.ifsccode)} />
+        <InfoRow label="Account type" value={shown(bank.accountType)} />
+        <InfoRow label="Bank city" value={shown(bank.bankCity)} />
+        <InfoRow label="UPI ID" value={shown(bank.upiId)} />
+        <InfoRow label="MICR code" value={shown(bank.micrCode)} />
+      </dl>
+    </li>
   );
 }
 
-function MailGlyph() {
-  return (
-    <Glyph>
-      <rect x="4" y="6" width="16" height="12" rx="2" />
-      <path d="m5 7 7 6 7-6" strokeLinejoin="round" />
-    </Glyph>
-  );
-}
-
-function UsersGlyph() {
-  return (
-    <Glyph>
-      <circle cx="9" cy="9" r="2.4" />
-      <path d="M4.8 17.5c.8-2 2.4-3 4.2-3s3.4 1 4.2 3" strokeLinecap="round" />
-      <circle cx="16" cy="9.5" r="2" />
-      <path d="M15.2 14.6c1.5.2 2.8 1 3.6 2.6" strokeLinecap="round" />
-    </Glyph>
-  );
-}
-
-function PinGlyph() {
-  return (
-    <Glyph>
-      <path d="M12 21s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10Z" strokeLinejoin="round" />
-      <circle cx="12" cy="11" r="2" />
-    </Glyph>
-  );
-}
-
-function ShieldGlyph() {
-  return (
-    <Glyph>
-      <path d="M12 3.5 19 6.5v5.2c0 4.2-2.8 7.2-7 8.8-4.2-1.6-7-4.6-7-8.8V6.5L12 3.5Z" strokeLinejoin="round" />
-    </Glyph>
-  );
-}
-
-function BankGlyph() {
-  return (
-    <Glyph>
-      <path d="M4 10h16M6 10v7M10 10v7M14 10v7M18 10v7M3 19h18M12 4l9 6H3l9-6Z" strokeLinejoin="round" />
-    </Glyph>
-  );
-}

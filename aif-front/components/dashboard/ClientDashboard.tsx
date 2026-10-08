@@ -3,6 +3,14 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { ReactNode } from "react";
+import {
+  LuChartColumn,
+  LuFileText,
+  LuList,
+  LuShieldCheck,
+  LuTrendingUp,
+  LuWallet,
+} from "react-icons/lu";
 import PortfolioCharts from "@/components/dashboard/PortfolioCharts";
 import LoadError from "@/components/ui/LoadError";
 import PnlValue from "@/components/ui/PnlValue";
@@ -25,7 +33,7 @@ type Summary = {
   trend: Array<{ date: string; label: string; value: number }>;
 };
 
-const cardClass = "rounded-2xl border border-[#E6EDF5] bg-white shadow-[0_8px_24px_rgba(20,50,90,0.05)]";
+const cardClass = "rounded-2xl border border-[#E6EDF5] bg-white shadow-[0_8px_24px_rgba(20,50,90,0.04)]";
 const orangeButtonClass =
   "inline-flex items-center justify-center rounded-full bg-[#F97316] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(249,115,22,0.35)] hover:bg-[#EA6C0C] disabled:cursor-not-allowed disabled:opacity-60";
 
@@ -63,14 +71,32 @@ export default function ClientDashboard() {
       {status === "ready" && data ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <Metric label="Total portfolio value" value={formatInr(data.metrics.totalPortfolioValue)} note="Current aggregate asset valuation" icon={<ChartIcon />} />
-            <Metric label="Invested capital" value={formatInr(data.metrics.investedCapital)} note="Historical principal deployed" icon={<WalletIcon />} />
-            <Metric label="Current valuation" value={formatInr(data.metrics.currentValuation)} note="Latest calculated market value" icon={<TrendIcon />} />
+            <Metric
+              label="Total portfolio value"
+              value={formatInr(data.metrics.totalPortfolioValue)}
+              note="Current aggregate asset valuation"
+              chip="bg-[var(--pm-nav-dashboard-bg)] text-[var(--pm-nav-dashboard-color)]"
+              icon={<LuTrendingUp className="h-4 w-4" aria-hidden="true" />}
+            />
+            <Metric
+              label="Invested capital"
+              value={formatInr(data.metrics.investedCapital)}
+              note="Historical principal deployed"
+              chip="bg-[var(--pm-nav-ledger-bg)] text-[var(--pm-nav-ledger-color)]"
+              icon={<LuWallet className="h-4 w-4" aria-hidden="true" />}
+            />
+            <Metric
+              label="Current valuation"
+              value={formatInr(data.metrics.currentValuation)}
+              note="Latest calculated market value"
+              chip="bg-[var(--pm-nav-holdings-bg)] text-[var(--pm-nav-holdings-color)]"
+              icon={<LuChartColumn className="h-4 w-4" aria-hidden="true" />}
+            />
             <article className={`${cardClass} p-5`}>
               <div className="flex items-start justify-between gap-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-[#7B8794]">Realized / unrealized P&L</p>
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFF1E6] text-[#F97316]">
-                  <PnlIcon />
+                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-statements-bg)] text-[var(--pm-nav-statements-color)]">
+                  <LuChartColumn className="h-4 w-4" aria-hidden="true" />
                 </span>
               </div>
               <div className="mt-4 space-y-3">
@@ -92,15 +118,15 @@ export default function ClientDashboard() {
             <section className={`${cardClass} p-5 lg:col-span-2`}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-[#2E5FA5]">
-                    <ListIcon />
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-dashboard-bg)] text-[var(--pm-nav-dashboard-color)]">
+                    <LuList className="h-4 w-4" aria-hidden="true" />
                   </span>
                   <div>
                     <h2 className="text-[15px] font-semibold text-[#16324F]">Recent transactions</h2>
                     <p className="text-xs text-[#7B8794]">Latest ledger debits and credits</p>
                   </div>
                 </div>
-                <Link href="/ledger" className="text-sm font-semibold text-[#F97316] hover:text-[#EA6C0C]">
+                <Link href="/ledger" className="text-sm font-semibold text-[var(--pm-nav-dashboard-color)] hover:text-[#1B3C6C]">
                   View ledger
                 </Link>
               </div>
@@ -136,8 +162,8 @@ export default function ClientDashboard() {
             <div className="flex flex-col gap-4">
               <section className={`${cardClass} p-5`}>
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-[#2E5FA5]">
-                    <DocIcon />
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-statements-bg)] text-[var(--pm-nav-statements-color)]">
+                    <LuFileText className="h-4 w-4" aria-hidden="true" />
                   </span>
                   <div>
                     <h2 className="text-[15px] font-semibold text-[#16324F]">Latest statement</h2>
@@ -168,8 +194,8 @@ export default function ClientDashboard() {
 
               <section className={`${cardClass} p-5`}>
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#FFF1E6] text-[#F97316]">
-                    <ShieldIcon />
+                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-profile-bg)] text-[var(--pm-nav-profile-color)]">
+                    <LuShieldCheck className="h-4 w-4" aria-hidden="true" />
                   </span>
                   <div>
                     <h2 className="text-[15px] font-semibold text-[#16324F]">KRA status</h2>
@@ -190,12 +216,24 @@ export default function ClientDashboard() {
   );
 }
 
-function Metric({ label, value, note, icon }: { label: string; value: string; note: string; icon: ReactNode }) {
+function Metric({
+  label,
+  value,
+  note,
+  icon,
+  chip,
+}: {
+  label: string;
+  value: string;
+  note: string;
+  icon: ReactNode;
+  chip: string;
+}) {
   return (
     <article className={`${cardClass} p-5`}>
       <div className="flex items-start justify-between gap-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-[#7B8794]">{label}</p>
-        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#E7F0FF] text-[#2E5FA5]">{icon}</span>
+        <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${chip}`}>{icon}</span>
       </div>
       <p className="mt-3 text-2xl font-semibold tracking-tight text-[#16324F]">{value}</p>
       <p className="mt-1 text-sm text-[#7B8794]">{note}</p>
@@ -203,74 +241,3 @@ function Metric({ label, value, note, icon }: { label: string; value: string; no
   );
 }
 
-function Icon({ children }: { children: ReactNode }) {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      {children}
-    </svg>
-  );
-}
-
-function ChartIcon() {
-  return (
-    <Icon>
-      <path d="M4 19V5M4 19h16" strokeLinecap="round" />
-      <path d="M7 15l4-4 3 2 5-6" strokeLinecap="round" strokeLinejoin="round" />
-    </Icon>
-  );
-}
-
-function WalletIcon() {
-  return (
-    <Icon>
-      <rect x="3" y="6" width="18" height="13" rx="2" />
-      <path d="M3 10h18M16 14h2" strokeLinecap="round" />
-    </Icon>
-  );
-}
-
-function TrendIcon() {
-  return (
-    <Icon>
-      <path d="M4 16l5-5 3 3 7-8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M14 6h5v5" strokeLinecap="round" strokeLinejoin="round" />
-    </Icon>
-  );
-}
-
-function PnlIcon() {
-  return (
-    <Icon>
-      <path d="M5 19V5M5 19h14" strokeLinecap="round" />
-      <path d="M9 14v3M13 10v7M17 7v10" strokeLinecap="round" />
-    </Icon>
-  );
-}
-
-function ListIcon() {
-  return (
-    <Icon>
-      <path d="M8 7h12M8 12h12M8 17h12" strokeLinecap="round" />
-      <circle cx="4.5" cy="7" r="1" fill="currentColor" stroke="none" />
-      <circle cx="4.5" cy="12" r="1" fill="currentColor" stroke="none" />
-      <circle cx="4.5" cy="17" r="1" fill="currentColor" stroke="none" />
-    </Icon>
-  );
-}
-
-function DocIcon() {
-  return (
-    <Icon>
-      <path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9.5A1.5 1.5 0 0 1 5.5 20V5A1.5 1.5 0 0 1 7 3.5Z" strokeLinejoin="round" />
-      <path d="M14 3.5V8h4.5" strokeLinecap="round" />
-    </Icon>
-  );
-}
-
-function ShieldIcon() {
-  return (
-    <Icon>
-      <path d="M12 3.5 19 6.5v5.2c0 4.2-2.8 7.2-7 8.8-4.2-1.6-7-4.6-7-8.8V6.5L12 3.5Z" strokeLinejoin="round" />
-    </Icon>
-  );
-}

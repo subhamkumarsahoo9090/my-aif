@@ -1,0 +1,31 @@
+---
+description: Next.js frontend conventions for aif-front
+globs: aif-front/**/*.{tsx,ts,js,css}
+alwaysApply: false
+---
+
+# Frontend (`aif-front`)
+
+Read `node_modules/next/dist/docs/` before using unfamiliar Next APIs.
+
+## Screens
+
+- Investor: `/dashboard`, `/profile`, `/ledger`, `/holdings`, `/statements`
+- Public: `/` (desktop home; below `lg` show login), `/login`, `/privacy`, `/terms`
+- Admin: `/admin/*` via `AdminShell`. Client 360: `/admin/clients/[code]`
+- API calls: `aif-front/config/endapi.js` + `apiFetch`. Token: sessionStorage + cookie `aif_session`.
+
+## UI
+
+- Page bg `#F4F7FB`. Cards: `rounded-2xl border border-[#E6EDF5] bg-white shadow-[0_8px_24px_rgba(20,50,90,0.05)]`.
+- Fields: `rounded-xl border border-[#E3E8EF] ... focus:border-[#F97316]`. Selects need `pr-10!` (Tailwind v4).
+- Labels `#1B3C6C`. Body `#16324F`. Muted `#7B8794`.
+- Orange button: `rounded-full bg-[#F97316] hover:bg-[#EA6C0C]`. Outline: `rounded-full border border-[#D5DDE6]`.
+- Sidebar tones live in `config/projectmanager.js` as `--pm-nav-*`. Use those for icons, not bright purple/green/rose.
+- Icons: `react-icons/lu`. Prefer small tinted chips on white cards.
+- Investor chrome: `DashboardShell` + `SideNav`. On mobile, account + Log out live in the side menu, not the top bar.
+
+## PWA
+
+- Manifest: `app/manifest.ts`. Home-screen icons: `public/icons/*` from `company.png`. Tab favicon stays `favicon_io (2)`.
+- Installed PWAs keep old icons until the user removes and re-adds the app.

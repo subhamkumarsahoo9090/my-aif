@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { LuFileText } from "react-icons/lu";
 import LoadError from "@/components/ui/LoadError";
 import Skeleton from "@/components/ui/Skeleton";
 import { useApp } from "@/context/AppProvider";
@@ -81,10 +82,10 @@ export default function StatementHistory() {
       {status === "error" ? <LoadError onRetry={reload} /> : null}
 
       {status === "ready" && data ? (
-        <section className={cardClass}>
+        <section className={`${cardClass} bg-white`}>
           <div className="flex items-center gap-3 px-5 pt-5">
-            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-[#2E5FA5]">
-              <DocIcon />
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-statements-bg)] text-[var(--pm-nav-statements-color)]">
+              <LuFileText className="h-4 w-4" aria-hidden="true" />
             </span>
             <div>
               <h2 className="text-[15px] font-semibold text-[#16324F]">Statements</h2>
@@ -100,11 +101,11 @@ export default function StatementHistory() {
               No statements yet. Published statement periods will be listed here for download and preview.
             </p>
           ) : (
-            <ul className="mt-4 flex flex-col gap-2 px-5 pb-5">
+            <ul className="mt-2 flex flex-col px-5 pb-3">
               {data.rows.map((statement) => (
                 <li
                   key={statement.id}
-                  className="flex flex-col gap-3 rounded-xl border border-[#EEF2F6] bg-[#F8FAFC] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-3 border-b border-[#EEF2F6] px-1 py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-[#16324F]">{statement.period}</p>
@@ -167,17 +168,9 @@ export default function StatementHistory() {
   );
 }
 
-const cardClass = "rounded-2xl border border-[#E6EDF5] bg-white shadow-[0_8px_24px_rgba(20,50,90,0.05)]";
+const cardClass = "rounded-2xl border border-[#E6EDF5] shadow-[0_8px_24px_rgba(20,50,90,0.04)]";
 const outlineButtonClass =
   "inline-flex items-center justify-center rounded-full border border-[#D5DDE6] bg-white px-4 py-2 text-sm font-medium text-[#1B3C6C] hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-60";
 const orangeButtonClass =
   "inline-flex items-center justify-center rounded-full bg-[#F97316] px-5 py-2 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(249,115,22,0.35)] hover:bg-[#EA6C0C] disabled:cursor-not-allowed disabled:opacity-60";
 
-function DocIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9.5A1.5 1.5 0 0 1 5.5 20V5A1.5 1.5 0 0 1 7 3.5Z" strokeLinejoin="round" />
-      <path d="M14 3.5V8h4.5M8 12h8M8 16h6" strokeLinecap="round" />
-    </svg>
-  );
-}

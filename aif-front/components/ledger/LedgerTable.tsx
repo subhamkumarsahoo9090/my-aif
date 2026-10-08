@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { LuList, LuSlidersHorizontal } from "react-icons/lu";
 import LoadError from "@/components/ui/LoadError";
 import Skeleton from "@/components/ui/Skeleton";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -30,7 +31,7 @@ function escapeHtml(value: string) {
     .replace(/"/g, "&quot;");
 }
 
-const cardClass = "rounded-2xl border border-[#E6EDF5] bg-white shadow-[0_8px_24px_rgba(20,50,90,0.05)]";
+const cardClass = "rounded-2xl border border-[#E6EDF5] shadow-[0_8px_24px_rgba(20,50,90,0.04)]";
 const fieldClass =
   "w-full rounded-xl border border-[#E3E8EF] bg-white px-3 py-2.5 text-sm text-foreground outline-none focus:border-[#F97316]";
 const outlineButtonClass =
@@ -125,10 +126,10 @@ export default function LedgerTable() {
 
       {status === "ready" && data ? (
         <div className="flex flex-col gap-4">
-          <form className={`${cardClass} p-5`}>
+          <form className={`${cardClass} bg-white p-5`}>
             <div className="mb-5 flex items-center gap-3">
-              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-[#2E5FA5]">
-                <FilterIcon />
+              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-ledger-bg)] text-[var(--pm-nav-ledger-color)]">
+                <LuSlidersHorizontal className="h-4 w-4" aria-hidden="true" />
               </span>
               <div>
                 <h2 className="text-[15px] font-semibold text-[#16324F]">Filter the ledger</h2>
@@ -168,10 +169,10 @@ export default function LedgerTable() {
               {rangeError}
             </p>
           ) : (
-            <section className={cardClass}>
+            <section className={`${cardClass} bg-white`}>
               <div className="flex items-center gap-3 px-5 pt-5">
-                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-[#2E5FA5]">
-                  <ListIcon />
+                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-ledger-bg)] text-[var(--pm-nav-ledger-color)]">
+                  <LuList className="h-4 w-4" aria-hidden="true" />
                 </span>
                 <div>
                   <h2 className="text-[15px] font-semibold text-[#16324F]">Transactions</h2>
@@ -231,21 +232,3 @@ export default function LedgerTable() {
   );
 }
 
-function FilterIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="M4 6h16M7 12h10M10 18h4" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function ListIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="M8 7h12M8 12h12M8 17h12" strokeLinecap="round" />
-      <circle cx="4.5" cy="7" r="1" fill="currentColor" stroke="none" />
-      <circle cx="4.5" cy="12" r="1" fill="currentColor" stroke="none" />
-      <circle cx="4.5" cy="17" r="1" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}

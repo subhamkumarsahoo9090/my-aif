@@ -111,7 +111,7 @@ video {
 
 .portal-sidebar {
   background-color: #091c37;
-  background-image: url("/sidebar-bg.jpg?v=2");
+  background-image: url("/sidebar-bg1.png?v=2");
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
@@ -120,7 +120,7 @@ video {
 
 .portal-topbar {
   background-color: #1b3c6c;
-  background-image: url("/topnav-bg.jpg?v=2");
+  background-image: url("/topnav-bg1.png?v=2");
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
