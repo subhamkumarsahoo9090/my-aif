@@ -73,9 +73,9 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
     setRows(null);
     setReport("");
     const lower = file.name.toLowerCase();
-    if (type === "ledger" && lower.endsWith(".csv")) {
+    if (type === "ledger" && !/\.(xlsx|xls|pdf)$/.test(lower)) {
       setCsv("");
-      setMessage("CSV is not accepted. Upload Excel, TXT, JSON, PDF, or a JPG.");
+      setMessage("Upload an Excel or PDF file.");
       return;
     }
     if (type === "ledger" && lower.endsWith(".pdf")) {
@@ -88,24 +88,7 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
         await preview(text, file.name);
       } catch {
         setCsv("");
-        setMessage("The PDF could not be read. Use a text PDF, or a JPG of the ledger.");
-      } finally {
-        setPending(false);
-      }
-      return;
-    }
-    if (type === "ledger" && /\.(jpe?g|png|webp)$/i.test(lower)) {
-      setPending(true);
-      setMessage("Reading the image...");
-      try {
-        const tesseract = await import("tesseract.js");
-        const result = await tesseract.default.recognize(file, "eng");
-        setCsv(result.data.text);
-        setMessage(null);
-        await preview(result.data.text, file.name);
-      } catch {
-        setCsv("");
-        setMessage("The image could not be read. Use a clear JPG of the ledger.");
+        setMessage("The PDF could not be read. Use a text PDF, or an Excel file.");
       } finally {
         setPending(false);
       }
@@ -231,7 +214,7 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
           <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-[#D5DDE6] bg-[#F8FAFC] px-4 py-6 text-center hover:border-[#F97316]">
             <input
               type="file"
-              accept={isLedger ? ".xlsx,.xls,.txt,.json,.pdf,.jpg,.jpeg,.png,.webp,image/*" : ".csv,text/csv"}
+              accept={isLedger ? ".xlsx,.xls,.pdf,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : ".csv,text/csv"}
               className="sr-only"
               onChange={(event) => {
                 const file = event.target.files?.[0];
@@ -245,7 +228,7 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
             <span className="text-sm font-semibold text-[#16324F]">
               {pending ? "Checking the file..." : fileName || (isLedger ? "Choose a ledger file" : "Choose a CSV file")}
             </span>
-            <span className="mt-1 text-xs text-[#7B8794]">{isLedger ? "Excel, TXT, JSON, PDF, or JPG" : "CSV with ISIN, allottee, PAN, and units"}</span>
+            <span className="mt-1 text-xs text-[#7B8794]">{isLedger ? "Excel or PDF" : "CSV with ISIN, allottee, PAN, and units"}</span>
           </label>
         </div>
 

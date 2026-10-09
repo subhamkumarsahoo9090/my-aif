@@ -667,7 +667,7 @@ export async function previewImport(type: ImportKind, csv: string, clientCode = 
       return [{
         line: 1,
         ok: false,
-        errors: ["This file could not be read. Upload an Excel, TXT, JSON, PDF, or JPG ledger with Date, Particulars, Debit, and Credit."],
+        errors: ["This file could not be read. Upload an Excel or PDF ledger with Date, Particulars, Debit, and Credit."],
         values: {},
       }];
     }
