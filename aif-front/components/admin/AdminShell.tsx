@@ -168,22 +168,26 @@ export default function AdminShell({
             </button>
           }
           end={
-            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-              <span className="relative inline-flex h-10 w-10 items-center justify-center text-white" aria-hidden="true">
+            <div className="flex shrink-0 items-center gap-2">
+              <span
+                className="relative inline-flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#1B3C6C] shadow-[0_6px_16px_rgba(20,40,70,0.16)]"
+                aria-hidden="true"
+              >
                 <BellIcon />
-                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#F97316] ring-2 ring-[#102848]" />
+                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#F97316] ring-2 ring-white" />
               </span>
-              <div className="hidden min-w-0 items-center gap-2 rounded-full bg-white/10 py-1 pl-1 pr-2.5 sm:flex">
-                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-xs font-semibold">
+              <div className="hidden min-w-0 items-center gap-2 rounded-full bg-white py-1 pl-1 pr-3.5 text-[#16324F] shadow-[0_6px_16px_rgba(20,40,70,0.16)] sm:flex">
+                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1B3C6C] text-[11px] font-semibold text-white">
                   {initials(user.name)}
                 </span>
-                <span className="truncate text-sm font-medium">{user.role === "superadmin" ? "Super admin" : "Admin"}</span>
-                <ChevronIcon />
+                <span className="truncate text-sm font-semibold">
+                  {user.role === "superadmin" ? "Super admin" : "Admin"}
+                </span>
               </div>
               <button
                 type="button"
                 onClick={() => void logout()}
-                className="inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/10 px-3 py-2 text-sm font-medium text-white hover:bg-white/20"
+                className="inline-flex items-center gap-2 rounded-full bg-[#1B3C6C] px-3.5 py-2 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(20,40,70,0.2)] hover:bg-[#16345F]"
               >
                 <LogoutIcon />
                 <span className="hidden sm:inline">Log out</span>
@@ -373,14 +377,6 @@ function BellIcon() {
   );
 }
 
-function ChevronIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 text-white/80" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="m7 10 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 function LogoutIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
@@ -432,7 +428,7 @@ function adminBanner(pathname: string, role: string) {
   if (pathname.startsWith("/admin/ledger")) {
     return {
       title: "Ledger",
-      description: "Upload a ledger file, review the rows, then commit the valid ones.",
+      description: "Upload a ledger file for a client, then see when each file was saved.",
     };
   }
   if (pathname.startsWith("/admin/holdings")) {

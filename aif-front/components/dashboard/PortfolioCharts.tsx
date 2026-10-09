@@ -97,9 +97,26 @@ function TrendChart({ points }: { points: Point[] }) {
     return { ...point, x, y };
   });
   const line = coords.map((point) => `${point.x},${point.y}`).join(" ");
+  const baseline = pad.top + innerH;
+  const area =
+    coords.length > 0
+      ? `${coords[0].x},${baseline} ${line} ${coords[coords.length - 1].x},${baseline}`
+      : "";
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="mt-3 h-56 w-full" role="img" aria-label="Portfolio valuation trend">
+    <svg
+      key={points.map((point) => point.date).join("-")}
+      viewBox={`0 0 ${width} ${height}`}
+      className="mt-3 h-56 w-full"
+      role="img"
+      aria-label="Portfolio valuation trend"
+    >
+      <defs>
+        <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#2E5FA5" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="#2E5FA5" stopOpacity="0" />
+        </linearGradient>
+      </defs>
       {ticks.map((tick, index) => {
         const y = pad.top + (1 - (tick - min) / span) * innerH;
         return (
@@ -111,9 +128,19 @@ function TrendChart({ points }: { points: Point[] }) {
           </g>
         );
       })}
-      <polyline fill="none" stroke="#2E5FA5" strokeWidth="3" points={line} strokeLinejoin="round" strokeLinecap="round" />
-      {coords.map((point) => (
-        <g key={`${point.label}-${point.x}`}>
+      {area ? <polygon points={area} fill="url(#trend-fill)" className="dash-area" /> : null}
+      <polyline
+        fill="none"
+        stroke="#2E5FA5"
+        strokeWidth="3"
+        points={line}
+        pathLength={1}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        className="dash-line"
+      />
+      {coords.map((point, index) => (
+        <g key={`${point.label}-${point.x}`} className="dash-dot" style={{ animationDelay: `${420 + index * 90}ms` }}>
           <circle cx={point.x} cy={point.y} r="4" fill="#ffffff" stroke="#2E5FA5" strokeWidth="2" />
           <text x={point.x} y={height - 8} textAnchor="middle" fontSize="11" fill="var(--pm-muted)">
             {point.label}
@@ -148,6 +175,8 @@ function AllocationChart({ holdings }: { holdings: Slice[] }) {
               strokeWidth="14"
               strokeDasharray={dash}
               strokeDashoffset={-offset}
+              className="dash-seg"
+              style={{ ["--ring" as string]: circumference, animationDelay: `${180 + index * 120}ms` }}
             />
           );
           offset += length;
@@ -158,7 +187,11 @@ function AllocationChart({ holdings }: { holdings: Slice[] }) {
         {holdings.map((holding, index) => {
           const share = Math.round((holding.marketValue / total) * 100);
           return (
-            <li key={`${holding.name}-${index}`} className="flex items-center justify-between gap-3">
+            <li
+              key={`${holding.name}-${index}`}
+              className="dash-rise flex items-center justify-between gap-3"
+              style={{ animationDelay: `${260 + index * 80}ms` }}
+            >
               <span className="flex min-w-0 items-center gap-2">
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: chartColors[index % chartColors.length] }} />
                 <span className="truncate text-foreground">{shortName(holding.name)}</span>

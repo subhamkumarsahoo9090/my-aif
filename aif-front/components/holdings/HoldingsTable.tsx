@@ -28,7 +28,8 @@ export default function HoldingsTable() {
       {status === "error" ? <LoadError onRetry={reload} /> : null}
 
       {status === "ready" && data ? (
-        <section className={`${cardClass} bg-white`}>
+        <section className="dash-rise" style={{ animationDelay: "0ms" }}>
+          <div className={`${cardClass} dash-card bg-white`}>
           <div className="flex items-center gap-3 px-5 pt-5">
             <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-holdings-bg)] text-[var(--pm-nav-holdings-color)]">
               <LuLayoutGrid className="h-4 w-4" aria-hidden="true" />
@@ -75,10 +76,12 @@ export default function HoldingsTable() {
                   )}
                 </thead>
                 <tbody>
-                  {data.rows.map((row) => {
+                  {data.rows.map((row, index) => {
+                    const rowClass = "dash-row border-b border-[#EEF2F6] last:border-0";
+                    const rowStyle = { animationDelay: `${120 + Math.min(index, 14) * 40}ms` };
                     if (row.allotmentDate || row.pan) {
                       return (
-                        <tr key={row.id} className="border-b border-[#EEF2F6] last:border-0">
+                        <tr key={row.id} className={rowClass} style={rowStyle}>
                           <td className="whitespace-nowrap px-5 py-3 text-[#16324F]">{row.srNo || "—"}</td>
                           <td className="whitespace-nowrap px-5 py-3 font-medium text-[#16324F]">{row.identifier}</td>
                           <td className="min-w-56 px-5 py-3 text-[#3D4C5E]">{row.name}</td>
@@ -93,7 +96,7 @@ export default function HoldingsTable() {
                     const marketValue = Math.round(row.quantity * nav * 100) / 100;
                     const pnl = Math.round((marketValue - row.quantity * row.averageCost) * 100) / 100;
                     return (
-                      <tr key={row.id} className="border-b border-[#EEF2F6] last:border-0">
+                      <tr key={row.id} className={rowClass} style={rowStyle}>
                         <td className="whitespace-nowrap px-5 py-3 font-medium text-[#16324F]">{row.identifier}</td>
                         <td className="min-w-56 px-5 py-3 text-[#3D4C5E]">{row.name}</td>
                         <td className="whitespace-nowrap px-5 py-3 text-right tabular-nums text-[#16324F]">
@@ -115,6 +118,7 @@ export default function HoldingsTable() {
               </table>
             </div>
           )}
+          </div>
         </section>
       ) : null}
     </div>

@@ -68,11 +68,103 @@
   }
 }
 
+@keyframes dash-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes dash-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes dash-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dash-seg {
+  from {
+    stroke-dasharray: 0 var(--ring, 264);
+  }
+}
+
+.dash-rise {
+  animation: dash-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.dash-card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.dash-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 34px rgba(20, 50, 90, 0.08);
+}
+
+.dash-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: dash-draw 1.15s cubic-bezier(0.22, 1, 0.36, 1) 0.28s both;
+}
+
+.dash-area {
+  opacity: 0;
+  animation: dash-fade 0.7s ease 0.85s both;
+}
+
+.dash-dot {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dash-rise 0.4s ease both;
+}
+
+.dash-seg {
+  animation: dash-seg 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes dash-row {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.dash-row {
+  animation: dash-row 0.45s ease both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-login-rise,
   .animate-login-float,
-  .animate-login-card {
+  .animate-login-card,
+  .dash-rise,
+  .dash-line,
+  .dash-area,
+  .dash-dot,
+  .dash-seg,
+  .dash-row {
     animation: none;
+    opacity: 1;
+    stroke-dashoffset: 0;
+  }
+
+  .dash-card:hover {
+    transform: none;
   }
 }
 
@@ -119,12 +211,37 @@ video {
 }
 
 .portal-topbar {
+  position: relative;
+  isolation: isolate;
   background-color: #1b3c6c;
+  color: #ffffff;
+}
+
+.portal-topbar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   background-image: url("/topnav-bg1.png?v=2");
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
-  color: #ffffff;
+  opacity: 0.62;
+  pointer-events: none;
+}
+
+.portal-topbar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgba(12, 36, 72, 0.46);
+  pointer-events: none;
+}
+
+.portal-topbar > * {
+  position: relative;
+  z-index: 2;
 }
 
 input[type="checkbox"] {

@@ -8,6 +8,18 @@ import StatusBadge from "@/components/ui/StatusBadge";
 type ImportKind = "ledger" | "holdings";
 type PreviewRow = { line: number; ok: boolean; errors: string[]; values: Record<string, string> };
 type ClientOption = { code: string; name: string };
+type ImportRecord = {
+  id: string;
+  type: string;
+  fileName: string;
+  status: string;
+  valid: number;
+  failed: number;
+  at: string;
+  actor: string;
+  clientCode?: string;
+  clientName?: string;
+};
 
 const ledgerSample = `{
   "lvbody": {
@@ -34,6 +46,13 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
   const [report, setReport] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [history, setHistory] = useState<ImportRecord[]>([]);
+
+  async function loadHistory() {
+    const response = await apiFetch(api.admin.imports);
+    const data = (await response.json().catch(() => ({}))) as { imports?: ImportRecord[] };
+    if (response.ok) setHistory((data.imports ?? []).filter((job) => job.type === type));
+  }
 
   useEffect(() => {
     let active = true;
@@ -43,6 +62,7 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
       if (active && response.ok) setClients(data.clients ?? []);
     }
     void loadClients();
+    if (type === "ledger") void loadHistory();
     return () => {
       active = false;
     };
@@ -62,8 +82,10 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
       setPending(true);
       setMessage("Reading the PDF...");
       try {
-        setCsv(await readPdf(file));
+        const text = await readPdf(file);
+        setCsv(text);
         setMessage(null);
+        await preview(text, file.name);
       } catch {
         setCsv("");
         setMessage("The PDF could not be read. Use a text PDF, or a JPG of the ledger.");
@@ -80,6 +102,7 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
         const result = await tesseract.default.recognize(file, "eng");
         setCsv(result.data.text);
         setMessage(null);
+        await preview(result.data.text, file.name);
       } catch {
         setCsv("");
         setMessage("The image could not be read. Use a clear JPG of the ledger.");
@@ -92,14 +115,16 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
       const XLSX = await import("xlsx");
       const book = XLSX.read(await file.arrayBuffer(), { type: "array" });
       const sheet = book.Sheets[book.SheetNames[0]];
-      setCsv(XLSX.utils.sheet_to_csv(sheet));
+      const text = XLSX.utils.sheet_to_csv(sheet);
+      setCsv(text);
       setMessage(null);
+      if (type === "ledger") await preview(text, file.name);
       return;
     }
     const text = await file.text();
     setCsv(text);
     setMessage(null);
-    if (type === "holdings") await preview(text, file.name);
+    await preview(text, file.name);
   }
 
   async function preview(source = csv, name = fileName) {
@@ -148,7 +173,12 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
       return;
     }
     setReport(data.errorReport ?? "");
-    setMessage(`Committed ${data.job.valid} rows. ${data.job.failed} rows were logged as errors.`);
+    setMessage(
+      isLedger
+        ? `Saved ${data.job.valid} rows for this client. ${data.job.failed} rows were left out.`
+        : `Committed ${data.job.valid} rows. ${data.job.failed} rows were logged as errors.`,
+    );
+    if (isLedger) await loadHistory();
   }
 
   const statement = useMemo(
@@ -167,7 +197,9 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
           <div>
             <h2 className="text-[15px] font-semibold text-[#16324F]">{isLedger ? "Upload ledger" : "Add holding"}</h2>
             <p className="text-xs text-[#7B8794]">
-              {isLedger ? "Bring in debit and credit rows for one investor." : "Bring in scheme units for investor accounts."}
+              {isLedger
+                ? "The file replaces that client's ledger. Dates, particulars, voucher, debit, and credit are kept."
+                : "Bring in scheme units for investor accounts."}
             </p>
           </div>
         </div>
@@ -211,7 +243,7 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
               <UploadIcon />
             </span>
             <span className="text-sm font-semibold text-[#16324F]">
-              {pending && !isLedger ? "Checking the file..." : fileName || (isLedger ? "Choose a ledger file" : "Choose a CSV file")}
+              {pending ? "Checking the file..." : fileName || (isLedger ? "Choose a ledger file" : "Choose a CSV file")}
             </span>
             <span className="mt-1 text-xs text-[#7B8794]">{isLedger ? "Excel, TXT, JSON, PDF, or JPG" : "CSV with ISIN, allottee, PAN, and units"}</span>
           </label>
@@ -296,6 +328,8 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
         </section>
       ) : null}
 
+      {isLedger ? <LedgerHistory jobs={history} /> : null}
+
       {report.trim().split("\n").length > 1 ? (
         <section className={`${cardClass} flex flex-wrap items-center justify-between gap-3 p-5`}>
           <div>
@@ -374,6 +408,76 @@ function InfoIcon() {
       <path d="M12 11v5M12 8h.01" strokeLinecap="round" />
     </svg>
   );
+}
+
+function LedgerHistory({ jobs }: { jobs: ImportRecord[] }) {
+  return (
+    <section className={cardClass}>
+      <div className="flex items-center gap-3 px-5 pt-5">
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-sm font-semibold text-[#1D4E89]">3</span>
+        <div>
+          <h2 className="text-[15px] font-semibold text-[#16324F]">Upload history</h2>
+          <p className="text-xs text-[#7B8794]">When a ledger file was saved, which client it was for, and who uploaded it.</p>
+        </div>
+      </div>
+      {jobs.length === 0 ? (
+        <p className="m-5 rounded-xl border border-dashed border-[#E3E8EF] px-3 py-6 text-center text-sm text-[#7B8794]">
+          No ledger file has been uploaded yet.
+        </p>
+      ) : (
+        <div className="mt-4 overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="border-y border-[#E6EDF5] text-xs uppercase tracking-wide text-[#7B8794]">
+              <tr>
+                {["When", "File", "Client", "Rows", "Uploaded by", "Status"].map((column) => (
+                  <th key={column} className="whitespace-nowrap px-5 py-3 font-medium">{column}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {jobs.map((job) => (
+                <tr key={job.id} className="border-b border-[#EEF2F6] last:border-0">
+                  <td className="whitespace-nowrap px-5 py-3 text-[#16324F]">{historyWhen(job.at)}</td>
+                  <td className="px-5 py-3 font-medium text-[#16324F]">{job.fileName}</td>
+                  <td className="px-5 py-3 text-[#3D4C5E]">
+                    {job.clientName || job.clientCode ? (
+                      <>
+                        <span className="text-[#16324F]">{job.clientName || job.clientCode}</span>
+                        {job.clientName && job.clientCode ? <span className="mt-0.5 block text-xs text-[#7B8794]">{job.clientCode}</span> : null}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-3 text-[#16324F]">
+                    {job.valid} saved{job.failed ? ` · ${job.failed} failed` : ""}
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-3 text-[#3D4C5E]">{job.actor || "—"}</td>
+                  <td className="px-5 py-3">
+                    <StatusBadge tone={job.status === "committed" ? "success" : "danger"}>
+                      {job.status === "committed" ? "Saved" : "Failed"}
+                    </StatusBadge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function historyWhen(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function HoldingPreview({ rows }: { rows: PreviewRow[] }) {

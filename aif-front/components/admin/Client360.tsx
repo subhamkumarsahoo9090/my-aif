@@ -449,15 +449,15 @@ export default function Client360({ code }: { code: string }) {
                 <Empty>Nothing recorded yet.</Empty>
               ) : (
                 <Table
-                  columns={["Date", "Type", "Amount", "Balance", "Narration"]}
+                  columns={["Date", "Particulars", "Vch Type", "Vch No.", "Debit", "Credit", "Balance"]}
                   rows={data.portal.ledger.map((row) => [
                     formatDate(row.date),
-                    <StatusBadge key={row.id} tone={row.type === "credit" ? "success" : "neutral"}>
-                      {row.type}
-                    </StatusBadge>,
-                    formatInr(row.amount),
+                    row.particulars?.trim() || row.narration,
+                    row.vchType || "—",
+                    row.vchNo || "—",
+                    row.type === "debit" ? formatInr(row.amount) : "—",
+                    row.type === "credit" ? formatInr(row.amount) : "—",
                     formatInr(row.balance),
-                    row.narration,
                   ])}
                 />
               )}

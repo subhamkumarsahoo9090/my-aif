@@ -88,19 +88,23 @@ function Panel({
   icon,
   chip,
   children,
+  delay,
 }: {
   title: string;
   icon: ReactNode;
   chip: string;
   children: ReactNode;
+  delay: string;
 }) {
   return (
-    <section className="flex h-full flex-col rounded-2xl border border-[#E6EDF5] bg-white p-4 shadow-[0_8px_24px_rgba(20,50,90,0.04)] sm:p-5">
+    <section className="dash-rise h-full" style={{ animationDelay: delay }}>
+      <div className="dash-card flex h-full flex-col rounded-2xl border border-[#E6EDF5] bg-white p-4 shadow-[0_8px_24px_rgba(20,50,90,0.04)] sm:p-5">
       <div className="mb-1 flex items-center gap-2.5">
         <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${chip}`}>{icon}</span>
         <h2 className="text-sm font-semibold text-[#16324F]">{title}</h2>
       </div>
       {children}
+      </div>
     </section>
   );
 }
@@ -222,7 +226,8 @@ function ProfileView({ profile }: { profile: InvestorProfile }) {
 
   return (
     <div className="grid gap-4">
-      <section className="rounded-2xl border border-[#E6EDF5] bg-white p-4 shadow-[0_8px_24px_rgba(20,50,90,0.05)] sm:p-5">
+      <section className="dash-rise" style={{ animationDelay: "0ms" }}>
+        <div className="dash-card rounded-2xl border border-[#E6EDF5] bg-white p-4 shadow-[0_8px_24px_rgba(20,50,90,0.05)] sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-center gap-4">
             <span className="inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#1B3C6C] text-lg font-semibold text-white">
@@ -254,6 +259,7 @@ function ProfileView({ profile }: { profile: InvestorProfile }) {
             <StatusPill ok={profile.fatca}>FATCA {profile.fatca ? "Yes" : "No"}</StatusPill>
           </div>
         </div>
+        </div>
       </section>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -261,6 +267,7 @@ function ProfileView({ profile }: { profile: InvestorProfile }) {
           label="Trading code"
           value={shown(profile.tradingCode)}
           copy
+          delay="80ms"
           chip="bg-[var(--pm-nav-dashboard-bg)] text-[var(--pm-nav-dashboard-color)]"
           icon={<LuUser className="h-4 w-4" aria-hidden="true" />}
         />
@@ -268,25 +275,28 @@ function ProfileView({ profile }: { profile: InvestorProfile }) {
           label="PAN number"
           value={shown(profile.pan)}
           copy
+          delay="150ms"
           chip="bg-[var(--pm-nav-holdings-bg)] text-[var(--pm-nav-holdings-color)]"
           icon={<LuIdCard className="h-4 w-4" aria-hidden="true" />}
         />
         <StatTile
           label="Date of birth"
           value={profile.dateOfBirth ? dobLabel(profile.dateOfBirth) : "—"}
+          delay="220ms"
           chip="bg-[var(--pm-nav-profile-bg)] text-[var(--pm-nav-profile-color)]"
           icon={<LuCalendar className="h-4 w-4" aria-hidden="true" />}
         />
         <StatTile
           label="Occupation"
           value={shown(profile.occupation)}
+          delay="290ms"
           chip="bg-[var(--pm-nav-ledger-bg)] text-[var(--pm-nav-ledger-color)]"
           icon={<LuBriefcase className="h-4 w-4" aria-hidden="true" />}
         />
       </div>
 
       <div className="grid items-start gap-4 xl:grid-cols-3">
-        <Panel title="Personal information" chip="bg-[var(--pm-nav-dashboard-bg)] text-[var(--pm-nav-dashboard-color)]" icon={<LuUser className="h-4 w-4" aria-hidden="true" />}>
+        <Panel title="Personal information" delay="340ms" chip="bg-[var(--pm-nav-dashboard-bg)] text-[var(--pm-nav-dashboard-color)]" icon={<LuUser className="h-4 w-4" aria-hidden="true" />}>
           <dl>
             <InfoRow label="Full name" value={shown(profile.fullName)} />
             <InfoRow label="Trading code" value={shown(profile.tradingCode)} copy />
@@ -296,7 +306,7 @@ function ProfileView({ profile }: { profile: InvestorProfile }) {
           </dl>
         </Panel>
 
-        <Panel title="Contact information" chip="bg-[var(--pm-nav-ledger-bg)] text-[var(--pm-nav-ledger-color)]" icon={<LuPhone className="h-4 w-4" aria-hidden="true" />}>
+        <Panel title="Contact information" delay="400ms" chip="bg-[var(--pm-nav-ledger-bg)] text-[var(--pm-nav-ledger-color)]" icon={<LuPhone className="h-4 w-4" aria-hidden="true" />}>
           <dl>
             <InfoRow label="Mobile number" value={shown(profile.mobile)} copy icon={<LuPhone className="h-4 w-4" aria-hidden="true" />} />
             <InfoRow label="Email address" value={shown(profile.email)} copy icon={<LuMail className="h-4 w-4" aria-hidden="true" />} />
@@ -304,14 +314,14 @@ function ProfileView({ profile }: { profile: InvestorProfile }) {
           </dl>
         </Panel>
 
-        <Panel title="Compliance status" chip="bg-[var(--pm-nav-profile-bg)] text-[var(--pm-nav-profile-color)]" icon={<LuShieldCheck className="h-4 w-4" aria-hidden="true" />}>
+        <Panel title="Compliance status" delay="460ms" chip="bg-[var(--pm-nav-profile-bg)] text-[var(--pm-nav-profile-color)]" icon={<LuShieldCheck className="h-4 w-4" aria-hidden="true" />}>
           <dl>
             <ComplianceLine label="KRA status" ok={profile.kra} yes="Verified" no="Pending" icon={<LuShieldCheck className="h-4 w-4" aria-hidden="true" />} />
             <ComplianceLine label="FATCA" ok={profile.fatca} yes="Yes" no="No" icon={<LuGlobe className="h-4 w-4" aria-hidden="true" />} />
           </dl>
         </Panel>
 
-        <Panel title="Family and income" chip="bg-[var(--pm-nav-holdings-bg)] text-[var(--pm-nav-holdings-color)]" icon={<LuUsers className="h-4 w-4" aria-hidden="true" />}>
+        <Panel title="Family and income" delay="520ms" chip="bg-[var(--pm-nav-holdings-bg)] text-[var(--pm-nav-holdings-color)]" icon={<LuUsers className="h-4 w-4" aria-hidden="true" />}>
           <div className="grid grid-cols-2 gap-2">
             <MiniField label="Father's name" value={shown(profile.fatherName)} />
             <MiniField label="Mother's name" value={shown(profile.motherName)} />
@@ -320,7 +330,7 @@ function ProfileView({ profile }: { profile: InvestorProfile }) {
           </div>
         </Panel>
 
-        <Panel title="Nominees" chip="bg-[var(--pm-nav-dashboard-bg)] text-[var(--pm-nav-dashboard-color)]" icon={<LuShieldCheck className="h-4 w-4" aria-hidden="true" />}>
+        <Panel title="Nominees" delay="580ms" chip="bg-[var(--pm-nav-dashboard-bg)] text-[var(--pm-nav-dashboard-color)]" icon={<LuShieldCheck className="h-4 w-4" aria-hidden="true" />}>
           {nominees.length === 0 ? (
             <p className="rounded-xl border border-dashed border-[#E3E8EF] px-3 py-8 text-center text-sm text-[#7B8794]">
               No nominee is on file.
@@ -328,7 +338,11 @@ function ProfileView({ profile }: { profile: InvestorProfile }) {
           ) : (
             <ul className="grid gap-2">
               {nominees.map((nominee, index) => (
-                <li key={`${nominee.name}-${index}`} className="flex items-center gap-3 rounded-xl bg-[#F8FAFC] px-3 py-2.5">
+                <li
+                  key={`${nominee.name}-${index}`}
+                  className="dash-rise flex items-center gap-3 rounded-xl bg-[#F8FAFC] px-3 py-2.5"
+                  style={{ animationDelay: `${640 + index * 70}ms` }}
+                >
                   <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1B3C6C] text-xs font-semibold text-white">
                     {initials(nominee.name || "?")}
                   </span>
@@ -342,7 +356,7 @@ function ProfileView({ profile }: { profile: InvestorProfile }) {
           )}
         </Panel>
 
-        <Panel title="Bank details" chip="bg-[var(--pm-nav-statements-bg)] text-[var(--pm-nav-statements-color)]" icon={<LuLandmark className="h-4 w-4" aria-hidden="true" />}>
+        <Panel title="Bank details" delay="640ms" chip="bg-[var(--pm-nav-statements-bg)] text-[var(--pm-nav-statements-color)]" icon={<LuLandmark className="h-4 w-4" aria-hidden="true" />}>
           {banks.length === 0 ? (
             <p className="rounded-xl border border-dashed border-[#E3E8EF] px-3 py-8 text-center text-sm text-[#7B8794]">
               No bank account is on file.
@@ -366,15 +380,18 @@ function StatTile({
   copy = false,
   chip,
   icon,
+  delay,
 }: {
   label: string;
   value: string;
   copy?: boolean;
   chip: string;
   icon: ReactNode;
+  delay: string;
 }) {
   return (
-    <article className="flex items-center gap-3 rounded-2xl border border-[#E6EDF5] bg-white px-4 py-3.5 shadow-[0_8px_24px_rgba(20,50,90,0.04)]">
+    <article className="dash-rise h-full" style={{ animationDelay: delay }}>
+      <div className="dash-card flex h-full items-center gap-3 rounded-2xl border border-[#E6EDF5] bg-white px-4 py-3.5 shadow-[0_8px_24px_rgba(20,50,90,0.04)]">
       <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${chip}`}>
         {icon}
       </span>
@@ -383,13 +400,14 @@ function StatTile({
         <p className="truncate text-sm font-bold text-[#16324F]">{value}</p>
       </div>
       {copy ? <CopyButton value={value} /> : null}
+      </div>
     </article>
   );
 }
 
 function BankBlock({ bank, index }: { bank: BankAccount; index: number }) {
   return (
-    <li className="rounded-xl bg-[#F8FAFC] px-3 py-3">
+    <li className="dash-rise rounded-xl bg-[#F8FAFC] px-3 py-3" style={{ animationDelay: `${700 + index * 80}ms` }}>
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="min-w-0 truncate text-sm font-semibold text-[#16324F]">{shown(bank.bankName)}</p>
         <span className="shrink-0 rounded-full bg-[#F4F7FB] px-2 py-0.5 text-[11px] font-semibold text-[#1B3C6C]">

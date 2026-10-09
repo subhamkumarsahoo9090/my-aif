@@ -40,6 +40,8 @@ export type ImportJob = {
   failed: number;
   at: string;
   actor: string;
+  clientCode?: string;
+  clientName?: string;
 };
 
 export type StatementRun = {
@@ -632,17 +634,29 @@ function panTokens(value: string) {
 }
 
 async function statementClientCode(headerLines: string[], chosenCode: string) {
-  const chosen = chosenCode.trim();
-  if (chosen) return (await getPortal(chosen)) ? chosen : "";
   const portals = await listPortals();
-  let best = { code: "", score: 0 };
+  let best = { code: "", name: "", score: 0 };
   for (const portal of portals) {
     for (const line of headerLines) {
       const score = investorMatchScore(portal.profile.fullName, line);
-      if (score > best.score) best = { code: portal.profile.tradingCode, score };
+      if (score > best.score) best = { code: portal.profile.tradingCode, name: portal.profile.fullName, score };
     }
   }
-  return best.score >= 65 ? best.code : "";
+  const named = best.score >= 65 ? best : null;
+  const chosen = chosenCode.trim();
+  if (chosen) {
+    const selected = await getPortal(chosen);
+    if (!selected) return { code: "", error: "Choose a client that exists." };
+    if (named && named.code !== chosen) {
+      return {
+        code: "",
+        error: `This file is for ${named.name} (${named.code}). Leave the client blank, or choose that client.`,
+      };
+    }
+    return { code: chosen, error: "" };
+  }
+  if (named) return { code: named.code, error: "" };
+  return { code: "", error: "The investor name in the file does not match a client. Choose the client and check the file again." };
 }
 
 export async function previewImport(type: ImportKind, csv: string, clientCode = ""): Promise<ImportRow[]> {
@@ -736,13 +750,14 @@ async function previewLedgerStatement(
   statement: NonNullable<ReturnType<typeof parseLedgerStatement>>,
   clientCode: string,
 ) {
-  const code = await statementClientCode(statement.headerLines, clientCode);
+  const matched = await statementClientCode(statement.headerLines, clientCode);
+  const code = matched.code;
   if (statement.entries.length === 0) {
     return [{ line: 1, ok: false, errors: ["No ledger rows were found."], values: {} }];
   }
   return statement.entries.map((entry) => {
     const errors: string[] = [];
-    if (!code) errors.push("The investor name in the file does not match a client. Choose the client and check the file again.");
+    if (!code) errors.push(matched.error);
     if (!entry.date) errors.push("Date is required.");
     if (!entry.narration) errors.push("Particulars are required.");
     if (!Number.isFinite(entry.amount) || entry.amount <= 0) errors.push("Debit or credit must be greater than zero.");
@@ -756,6 +771,9 @@ async function previewLedgerStatement(
         type: entry.type,
         amount: String(entry.amount),
         narration: entry.narration,
+        particulars: entry.particulars,
+        vchtype: entry.vchType,
+        vchno: entry.vchNo,
       },
     };
   });
@@ -782,7 +800,11 @@ export async function commitImport(actor: string, type: ImportKind, fileName: st
           type: cell(row.values, "type").toLowerCase() as "debit" | "credit",
           amount: Number(cell(row.values, "amount")),
           narration: cell(row.values, "narration"),
+          particulars: cell(row.values, "particulars"),
+          vchType: cell(row.values, "vchtype"),
+          vchNo: cell(row.values, "vchno"),
         })),
+        "replace",
       );
     } else {
       const holdingRows = [];
@@ -808,6 +830,11 @@ export async function commitImport(actor: string, type: ImportKind, fileName: st
     }
   }
 
+  const clients = [...new Set(valid.map((row) => cell(row.values, "clientcode")).filter(Boolean))];
+  const names: string[] = [];
+  for (const client of clients) {
+    names.push((await getPortal(client))?.profile.fullName || client);
+  }
   const job: ImportJob = {
     id: `imp-${imports.length + 1}`,
     type,
@@ -817,6 +844,8 @@ export async function commitImport(actor: string, type: ImportKind, fileName: st
     failed: rows.length - valid.length,
     at: stamp(),
     actor,
+    clientCode: clients.join(", "),
+    clientName: names.join(", "),
   };
   imports.unshift(job);
   await recordAudit({

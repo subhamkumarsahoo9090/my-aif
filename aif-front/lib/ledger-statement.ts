@@ -100,6 +100,14 @@ export function parseAmount(value: string) {
 export function parseStatementDate(value: string) {
   const text = value.trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+  if (/^\d{5}(\.0+)?$/.test(text)) {
+    const serial = Math.round(Number(text));
+    if (serial >= 20000 && serial <= 80000) {
+      const date = new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
+      const pad = (part: number) => String(part).padStart(2, "0");
+      return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
+    }
+  }
   const named = text.match(/^(\d{1,2})[/-]([A-Za-z]{3})[/-](\d{2,4})$/);
   if (named) {
     const month = months[named[2].toLowerCase()];
@@ -325,41 +333,53 @@ function statementFromTable(table: string[][]): LedgerStatement | null {
   const debitIndex = columnIndex(headers, "debit", "dr");
   const creditIndex = columnIndex(headers, "credit", "cr");
 
-  const headerLines = table
+  const preamble = table
     .slice(0, headerIndex)
     .map((row) => row.filter(Boolean).join(" ").trim())
-    .filter((line) => !skipHeaderLine(line));
+    .filter(Boolean);
+  const period = preamble.map(readPeriod).find(Boolean) ?? "";
+  const headerLines = preamble.filter((line) => !skipHeaderLine(line) && !readPeriod(line));
 
   const entries: StatementEntry[] = [];
   let carriedDate = "";
   table.slice(headerIndex + 1).forEach((row, offset) => {
-    const particulars = row[particularsIndex] ?? "";
-    if (!particulars.trim()) return;
-    if (/closing\s*balance|^total$/i.test(particulars.trim())) return;
+    const read = readParticulars(row, particularsIndex, typeIndex);
+    if (!read.name) return;
+    if (/closing\s*balance|^total$/i.test(read.name)) return;
     const debit = debitIndex >= 0 ? parseAmount(row[debitIndex] ?? "") : 0;
     const credit = creditIndex >= 0 ? parseAmount(row[creditIndex] ?? "") : 0;
-    if (!particulars.trim() && !debit && !credit) return;
     if (debit > 0 && credit > 0) return;
 
     const parsedDate = parseStatementDate(row[dateIndex] ?? "");
     if (parsedDate) carriedDate = parsedDate;
     const amount = debit > 0 ? debit : credit;
     if (!amount) return;
-    const detail = particulars.replace(/^(dr|cr)\s+/i, "").trim();
-    const voucher = [row[typeIndex] ?? "", row[numberIndex] ?? ""].map((item) => item.trim()).filter(Boolean).join(" ");
+    const label = read.contra ? `${read.contra} ${read.name}` : read.name;
     entries.push({
       line: headerIndex + offset + 2,
       date: carriedDate,
       type: debit > 0 ? "debit" : "credit",
       amount,
-      narration: [detail, voucher].filter(Boolean).join(" · "),
-      particulars: particulars.trim(),
+      narration: read.name,
+      particulars: label,
       vchType: (row[typeIndex] ?? "").trim(),
       vchNo: (row[numberIndex] ?? "").trim(),
     });
   });
 
-  return { headerLines, period: "", entries };
+  return { headerLines, period, entries };
+}
+
+function readParticulars(row: string[], particularsIndex: number, typeIndex: number) {
+  const marker = (row[particularsIndex] ?? "").trim();
+  const nextIndex = particularsIndex + 1;
+  const next = (row[nextIndex] ?? "").trim();
+  if (/^(dr|cr)$/i.test(marker) && next && nextIndex !== typeIndex) {
+    return { contra: /^cr$/i.test(marker) ? "Cr" : "Dr", name: next };
+  }
+  const inline = marker.match(/^(dr|cr)\s+(.+)$/i);
+  if (inline) return { contra: /^cr$/i.test(inline[1]) ? "Cr" : "Dr", name: inline[2].trim() };
+  return { contra: "", name: marker };
 }
 
 function statementFromTallyExport(table: string[][]): LedgerStatement | null {

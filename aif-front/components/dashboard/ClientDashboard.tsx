@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import {
   LuChartColumn,
@@ -73,26 +73,30 @@ export default function ClientDashboard() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Metric
               label="Total portfolio value"
-              value={formatInr(data.metrics.totalPortfolioValue)}
+              amount={data.metrics.totalPortfolioValue}
               note="Current aggregate asset valuation"
               chip="bg-[var(--pm-nav-dashboard-bg)] text-[var(--pm-nav-dashboard-color)]"
               icon={<LuTrendingUp className="h-4 w-4" aria-hidden="true" />}
+              delay="0ms"
             />
             <Metric
               label="Invested capital"
-              value={formatInr(data.metrics.investedCapital)}
+              amount={data.metrics.investedCapital}
               note="Historical principal deployed"
               chip="bg-[var(--pm-nav-ledger-bg)] text-[var(--pm-nav-ledger-color)]"
               icon={<LuWallet className="h-4 w-4" aria-hidden="true" />}
+              delay="80ms"
             />
             <Metric
               label="Current valuation"
-              value={formatInr(data.metrics.currentValuation)}
+              amount={data.metrics.currentValuation}
               note="Latest calculated market value"
               chip="bg-[var(--pm-nav-holdings-bg)] text-[var(--pm-nav-holdings-color)]"
               icon={<LuChartColumn className="h-4 w-4" aria-hidden="true" />}
+              delay="160ms"
             />
-            <article className={`${cardClass} p-5`}>
+            <article className="dash-rise h-full" style={{ animationDelay: "240ms" }}>
+              <div className={`${cardClass} dash-card h-full p-5`}>
               <div className="flex items-start justify-between gap-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-[#7B8794]">Realized / unrealized P&L</p>
                 <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-statements-bg)] text-[var(--pm-nav-statements-color)]">
@@ -102,20 +106,24 @@ export default function ClientDashboard() {
               <div className="mt-4 space-y-3">
                 <div>
                   <p className="text-xs text-[#7B8794]">Realized</p>
-                  <PnlValue value={data.metrics.realizedPnl} />
+                  <CountedPnl value={data.metrics.realizedPnl} />
                 </div>
                 <div>
                   <p className="text-xs text-[#7B8794]">Unrealized</p>
-                  <PnlValue value={data.metrics.unrealizedPnl} />
+                  <CountedPnl value={data.metrics.unrealizedPnl} />
                 </div>
+              </div>
               </div>
             </article>
           </div>
 
-          <PortfolioCharts trend={data.trend} holdings={data.holdings} />
+          <div className="dash-rise" style={{ animationDelay: "280ms" }}>
+            <PortfolioCharts trend={data.trend} holdings={data.holdings} />
+          </div>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
-            <section className={`${cardClass} p-5 lg:col-span-2`}>
+            <section className="dash-rise lg:col-span-2" style={{ animationDelay: "360ms" }}>
+              <div className={`${cardClass} p-5`}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-dashboard-bg)] text-[var(--pm-nav-dashboard-color)]">
@@ -136,10 +144,11 @@ export default function ClientDashboard() {
                 </p>
               ) : (
                 <ul className="mt-4 space-y-2">
-                  {data.recentTransactions.map((row) => (
+                  {data.recentTransactions.map((row, index) => (
                     <li
                       key={row.id}
-                      className="flex flex-col gap-2 rounded-xl border border-[#EEF2F6] bg-[#F8FAFC] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+                      className="dash-rise flex flex-col gap-2 rounded-xl border border-[#EEF2F6] bg-[#F8FAFC] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+                      style={{ animationDelay: `${420 + index * 70}ms` }}
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-[#16324F]">{row.narration}</p>
@@ -157,10 +166,12 @@ export default function ClientDashboard() {
                   ))}
                 </ul>
               )}
+              </div>
             </section>
 
             <div className="flex flex-col gap-4">
-              <section className={`${cardClass} p-5`}>
+              <section className="dash-rise" style={{ animationDelay: "420ms" }}>
+                <div className={`${cardClass} dash-card p-5`}>
                 <div className="flex items-center gap-3">
                   <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-statements-bg)] text-[var(--pm-nav-statements-color)]">
                     <LuFileText className="h-4 w-4" aria-hidden="true" />
@@ -190,9 +201,11 @@ export default function ClientDashboard() {
                     No statement yet. The current cycle statement will show up here when it is published.
                   </p>
                 )}
+                </div>
               </section>
 
-              <section className={`${cardClass} p-5`}>
+              <section className="dash-rise" style={{ animationDelay: "500ms" }}>
+                <div className={`${cardClass} dash-card p-5`}>
                 <div className="flex items-center gap-3">
                   <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-profile-bg)] text-[var(--pm-nav-profile-color)]">
                     <LuShieldCheck className="h-4 w-4" aria-hidden="true" />
@@ -207,6 +220,7 @@ export default function ClientDashboard() {
                     {data.kraStatus === "verified" ? "Verified" : "Pending"}
                   </StatusBadge>
                 </div>
+                </div>
               </section>
             </div>
           </div>
@@ -216,27 +230,61 @@ export default function ClientDashboard() {
   );
 }
 
+function useCountUp(target: number) {
+  const [value, setValue] = useState(0);
+
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setValue(target);
+      return;
+    }
+    let frame = 0;
+    const start = performance.now();
+    const duration = 900;
+    function tick(now: number) {
+      const progress = Math.min(1, (now - start) / duration);
+      const eased = 1 - (1 - progress) ** 3;
+      setValue(target * eased);
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    }
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [target]);
+
+  return value;
+}
+
+function CountedPnl({ value }: { value: number }) {
+  return <PnlValue value={useCountUp(value)} />;
+}
+
 function Metric({
   label,
-  value,
+  amount,
   note,
   icon,
   chip,
+  delay,
 }: {
   label: string;
-  value: string;
+  amount: number;
   note: string;
   icon: ReactNode;
   chip: string;
+  delay: string;
 }) {
+  const shown = useCountUp(amount);
   return (
-    <article className={`${cardClass} p-5`}>
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[#7B8794]">{label}</p>
-        <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${chip}`}>{icon}</span>
+    <article className="dash-rise h-full" style={{ animationDelay: delay }}>
+      <div className={`${cardClass} dash-card h-full p-5`}>
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#7B8794]">{label}</p>
+          <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${chip}`}>{icon}</span>
+        </div>
+        <p className="mt-3 text-2xl font-semibold tracking-tight text-[#16324F] tabular-nums">{formatInr(shown)}</p>
+        <p className="mt-1 text-sm text-[#7B8794]">{note}</p>
       </div>
-      <p className="mt-3 text-2xl font-semibold tracking-tight text-[#16324F]">{value}</p>
-      <p className="mt-1 text-sm text-[#7B8794]">{note}</p>
     </article>
   );
 }

@@ -14,6 +14,9 @@ export type LedgerRow = {
   amount: number;
   balance: number;
   narration: string;
+  particulars?: string;
+  vchType?: string;
+  vchNo?: string;
 };
 
 export type Holding = {

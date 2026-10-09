@@ -354,7 +354,7 @@ function refreshMetrics(portal: PortalData) {
     .filter(
       (row) =>
         row.type === "credit" &&
-        row.narration.startsWith("Capital contribution"),
+        (row.narration.startsWith("Capital contribution") || Boolean(row.particulars || row.vchType)),
     )
     .reduce((sum, row) => sum + row.amount, 0);
   const currentValuation = portal.holdings.reduce(
@@ -512,23 +512,37 @@ export async function updateClientProfile(
 
 export async function importLedgerRows(
   clientCode: string,
-  rows: Array<{ date: string; type: "debit" | "credit"; amount: number; narration: string }>,
+  rows: Array<{
+    date: string;
+    type: "debit" | "credit";
+    amount: number;
+    narration: string;
+    particulars?: string;
+    vchType?: string;
+    vchNo?: string;
+  }>,
+  mode: "append" | "replace" = "append",
 ) {
   await ready();
   const account = accounts.get(clientCode);
   if (!account) return false;
-  let balance = account.portal.ledger.at(-1)?.balance ?? 0;
-  rows.forEach((row, index) => {
+  let balance = mode === "replace" ? 0 : (account.portal.ledger.at(-1)?.balance ?? 0);
+  const next = rows.map((row, index) => {
     balance += row.type === "credit" ? row.amount : -row.amount;
-    account.portal.ledger.push({
-      id: `imp-${account.portal.ledger.length + 1}-${index}`,
+    return {
+      id: `imp-${mode === "replace" ? index + 1 : account.portal.ledger.length + 1}-${index}`,
       date: row.date,
       type: row.type,
       amount: row.amount,
       balance,
       narration: row.narration,
-    });
+      particulars: row.particulars || "",
+      vchType: row.vchType || "",
+      vchNo: row.vchNo || "",
+    };
   });
+  if (mode === "replace") account.portal.ledger = next;
+  else account.portal.ledger.push(...next);
   refreshMetrics(account.portal);
   await persistInvestor(clientCode);
   return true;

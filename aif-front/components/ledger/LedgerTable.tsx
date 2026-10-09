@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { LuList, LuSlidersHorizontal } from "react-icons/lu";
 import LoadError from "@/components/ui/LoadError";
 import Skeleton from "@/components/ui/Skeleton";
-import StatusBadge from "@/components/ui/StatusBadge";
 import DateField from "@/components/ui/DateField";
 import { downloadBlob } from "@/lib/files";
 import { formatDate, formatInr } from "@/lib/format";
@@ -47,6 +46,19 @@ function creditAmount(row: LedgerRow) {
   return row.type === "credit" ? row.amount : "";
 }
 
+function particularsOf(row: LedgerRow) {
+  return row.particulars?.trim() || row.narration;
+}
+
+function fileDate(iso: string) {
+  const [year, month, day] = iso.split("-").map(Number);
+  if (!year || !month || !day) return iso;
+  const names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${day}-${names[month - 1]}-${String(year).slice(2)}`;
+}
+
+const exportColumns = ["Date", "Particulars", "Vch Type", "Vch No.", "Debit", "Credit", "Balance"];
+
 export default function LedgerTable() {
   const { data, status, reload } = usePortalResource<LedgerResponse>(api.portal.ledger);
   const [start, setStart] = useState("");
@@ -68,17 +80,17 @@ export default function LedgerTable() {
 
   function exportCsv() {
     if (!data) return;
-    const header = ["Date", "Type", "Debit", "Credit", "Balance", "Narration"];
     const lines = [
-      header.join(","),
+      exportColumns.join(","),
       ...visible.map((row) =>
         [
-          row.date,
-          row.type,
+          fileDate(row.date),
+          csvCell(particularsOf(row)),
+          csvCell(row.vchType || ""),
+          csvCell(row.vchNo || ""),
           debitAmount(row),
           creditAmount(row),
           row.balance,
-          csvCell(row.narration),
         ].join(","),
       ),
     ];
@@ -90,18 +102,17 @@ export default function LedgerTable() {
 
   function exportExcel() {
     if (!data) return;
-    const head = ["Date", "Type", "Debit", "Credit", "Balance", "Narration"]
-      .map((cell) => `<th>${cell}</th>`)
-      .join("");
+    const head = exportColumns.map((cell) => `<th>${cell}</th>`).join("");
     const body = visible
       .map((row) => {
         const cells = [
-          row.date,
-          row.type,
+          fileDate(row.date),
+          escapeHtml(particularsOf(row)),
+          escapeHtml(row.vchType || ""),
+          escapeHtml(row.vchNo || ""),
           debitAmount(row),
           creditAmount(row),
           row.balance,
-          escapeHtml(row.narration),
         ];
         return `<tr>${cells.map((cell) => `<td>${cell}</td>`).join("")}</tr>`;
       })
@@ -126,7 +137,8 @@ export default function LedgerTable() {
 
       {status === "ready" && data ? (
         <div className="flex flex-col gap-4">
-          <form className={`${cardClass} bg-white p-5`}>
+          <form className="dash-rise" style={{ animationDelay: "0ms" }}>
+            <div className={`${cardClass} dash-card bg-white p-5`}>
             <div className="mb-5 flex items-center gap-3">
               <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-ledger-bg)] text-[var(--pm-nav-ledger-color)]">
                 <LuSlidersHorizontal className="h-4 w-4" aria-hidden="true" />
@@ -162,14 +174,16 @@ export default function LedgerTable() {
                 Export Excel
               </button>
             </div>
+            </div>
           </form>
 
           {rangeError ? (
-            <p className="rounded-2xl border border-[#F6D5D5] bg-[#FFF6F6] px-4 py-3 text-sm text-danger" role="alert">
+            <p className="dash-rise rounded-2xl border border-[#F6D5D5] bg-[#FFF6F6] px-4 py-3 text-sm text-danger" role="alert" style={{ animationDelay: "120ms" }}>
               {rangeError}
             </p>
           ) : (
-            <section className={`${cardClass} bg-white`}>
+            <section className="dash-rise" style={{ animationDelay: "120ms" }}>
+              <div className={`${cardClass} bg-white`}>
               <div className="flex items-center gap-3 px-5 pt-5">
                 <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-ledger-bg)] text-[var(--pm-nav-ledger-color)]">
                   <LuList className="h-4 w-4" aria-hidden="true" />
@@ -183,7 +197,9 @@ export default function LedgerTable() {
               </div>
               {visible.length === 0 ? (
                 <p className="m-5 rounded-xl border border-dashed border-[#E3E8EF] px-3 py-6 text-center text-sm text-[#7B8794]">
-                  No transactions in this range. Choose a different start or end date, or clear the filter to see the full ledger.
+                  {start || end
+                    ? "No transactions in this range. Choose a different start or end date, or clear the filter to see the full ledger."
+                    : "No ledger has been saved for this trading code yet."}
                 </p>
               ) : (
                 <div className="mt-4 overflow-x-auto">
@@ -192,22 +208,25 @@ export default function LedgerTable() {
                     <thead className="border-y border-[#E6EDF5] text-xs uppercase tracking-wide text-[#7B8794]">
                       <tr>
                         <th scope="col" className="px-5 py-3 font-medium">Date</th>
-                        <th scope="col" className="px-5 py-3 font-medium">Type</th>
+                        <th scope="col" className="px-5 py-3 font-medium">Particulars</th>
+                        <th scope="col" className="px-5 py-3 font-medium">Vch Type</th>
+                        <th scope="col" className="px-5 py-3 font-medium">Vch No.</th>
                         <th scope="col" className="px-5 py-3 text-right font-medium">Debit</th>
                         <th scope="col" className="px-5 py-3 text-right font-medium">Credit</th>
                         <th scope="col" className="px-5 py-3 text-right font-medium">Balance</th>
-                        <th scope="col" className="px-5 py-3 font-medium">Narration</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {visible.map((row) => (
-                        <tr key={row.id} className="border-b border-[#EEF2F6] last:border-0">
+                    <tbody key={`${start}|${end}`}>
+                      {visible.map((row, index) => (
+                        <tr
+                          key={row.id}
+                          className="dash-row border-b border-[#EEF2F6] last:border-0"
+                          style={{ animationDelay: `${180 + Math.min(index, 14) * 40}ms` }}
+                        >
                           <td className="whitespace-nowrap px-5 py-3 text-[#16324F]">{formatDate(row.date)}</td>
-                          <td className="px-5 py-3">
-                            <StatusBadge tone={row.type === "credit" ? "success" : "neutral"}>
-                              {row.type === "credit" ? "Credit" : "Debit"}
-                            </StatusBadge>
-                          </td>
+                          <td className="min-w-56 px-5 py-3 text-[#16324F]">{particularsOf(row)}</td>
+                          <td className="whitespace-nowrap px-5 py-3 text-[#3D4C5E]">{row.vchType || "—"}</td>
+                          <td className="whitespace-nowrap px-5 py-3 text-[#3D4C5E]">{row.vchNo || "—"}</td>
                           <td className="whitespace-nowrap px-5 py-3 text-right tabular-nums text-[#16324F]">
                             {row.type === "debit" ? formatInr(row.amount) : "—"}
                           </td>
@@ -217,13 +236,13 @@ export default function LedgerTable() {
                           <td className="whitespace-nowrap px-5 py-3 text-right tabular-nums font-medium text-[#16324F]">
                             {formatInr(row.balance)}
                           </td>
-                          <td className="min-w-56 px-5 py-3 text-[#3D4C5E]">{row.narration}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               )}
+              </div>
             </section>
           )}
         </div>

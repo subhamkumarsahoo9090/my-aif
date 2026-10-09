@@ -82,7 +82,8 @@ export default function StatementHistory() {
       {status === "error" ? <LoadError onRetry={reload} /> : null}
 
       {status === "ready" && data ? (
-        <section className={`${cardClass} bg-white`}>
+        <section className="dash-rise" style={{ animationDelay: "0ms" }}>
+          <div className={`${cardClass} dash-card bg-white`}>
           <div className="flex items-center gap-3 px-5 pt-5">
             <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-statements-bg)] text-[var(--pm-nav-statements-color)]">
               <LuFileText className="h-4 w-4" aria-hidden="true" />
@@ -102,10 +103,11 @@ export default function StatementHistory() {
             </p>
           ) : (
             <ul className="mt-2 flex flex-col px-5 pb-3">
-              {data.rows.map((statement) => (
+              {data.rows.map((statement, index) => (
                 <li
                   key={statement.id}
-                  className="flex flex-col gap-3 border-b border-[#EEF2F6] px-1 py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between"
+                  className="dash-rise flex flex-col gap-3 border-b border-[#EEF2F6] px-1 py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between"
+                  style={{ animationDelay: `${120 + Math.min(index, 14) * 50}ms` }}
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-[#16324F]">{statement.period}</p>
@@ -133,6 +135,7 @@ export default function StatementHistory() {
               ))}
             </ul>
           )}
+          </div>
         </section>
       ) : null}
 

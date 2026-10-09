@@ -44,3 +44,25 @@ Both buttons require a client, a statement type, and a period.
 The page loads `GET /api/admin/reports` and lists every generate and schedule action: client name, statement type, period, mode, frequency, status, and date. Newest rows are first. A generated row has **Download PDF**. A scheduled row does not, because no file was created. The same rows are kept with the platform state, so they remain after a restart.
 
 A generated statement also appears on that client’s **Reports** and **Statements** tabs in Client 360. Only a generated statement appears on the investor’s own Statements page. A scheduled row stays in delivery history and does not show up there.
+
+----------------------------------
+`http://localhost:3000/statements` is the investor’s statement list. It shows only statements that an admin has published for the logged-in client. A ledger upload does not add a row here.
+
+Each row shows the period you typed (for example `Q2 FY 2026-27`), the issue date, **Preview**, and **Download PDF**. Preview opens the PDF on the page. Download saves a file named like `Wealth-Discovery-TC24019-Capital-account.pdf`. If nothing has been published, the page says no statements yet.
+
+The workflow is:
+
+1. An admin or super admin opens `http://localhost:3000/admin/reports`.
+2. They choose the client, a statement type, and a period.
+3. **Generate PDF record** publishes that statement. It then appears on that client’s `/statements` page.
+4. The investor signs in and opens **Statements**, then previews or downloads it.
+
+The three types are:
+
+- **Capital account** — the client’s ledger (date, debit or credit, amount, balance, narration).
+- **Holdings** — ISIN, description, units, and market value.
+- **Portfolio** — a summary of value, invested capital, and profit or loss.
+
+The PDF is built when someone opens it, from the client’s data at that moment. It is not stored as a file.
+
+**Schedule delivery** only saves a request on the admin history. It does not email anyone, and it does not show up on `/statements`.

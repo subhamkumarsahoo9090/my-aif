@@ -32,9 +32,9 @@ export default async function Footer() {
         <img
           src="/footerbg.png"
           alt=""
-          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-60"
         />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#071833]/78 via-[#0c2748]/62 to-[#16375c]/48" />
+        <div className="pointer-events-none absolute inset-0 bg-[#0c2448]/50" />
 
         <div className="footer-grid relative grid gap-10 px-6 py-9 sm:px-8 lg:grid-cols-4 lg:gap-8 lg:px-10 lg:py-10">
           <div>
