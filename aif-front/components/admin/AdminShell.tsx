@@ -99,7 +99,7 @@ export default function AdminShell({
           <Link href="/admin" onClick={() => setMenuOpen(false)} className="inline-flex">
             <Logo name={brand.name} logo={brand.logo} display={brand.display} />
           </Link>
-          <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/55">
+          <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-white">
             {user.role === "superadmin" ? "Super admin" : "Admin panel"}
           </p>
         </div>
@@ -113,8 +113,8 @@ export default function AdminShell({
                 onClick={() => setMenuOpen(false)}
                 className={
                   active
-                    ? "flex items-center gap-3 rounded-xl bg-[#F97316] px-3 py-2.5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(249,115,22,0.35)]"
-                    : "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/90 hover:bg-white/10"
+                    ? "flex items-center gap-3 whitespace-nowrap rounded-xl bg-[#F97316] px-3 py-2.5 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(249,115,22,0.35)]"
+                    : "flex items-center gap-3 whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-medium text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.45)] hover:bg-white/15"
                 }
                 aria-current={active ? "page" : undefined}
               >

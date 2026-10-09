@@ -55,7 +55,7 @@ export default function SideNav({
                 className={
                   active
                     ? "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold"
-                    : "flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-white hover:bg-white/15"
+                    : "flex items-center gap-3 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.45)] hover:bg-white/15"
                 }
                 style={
                   active

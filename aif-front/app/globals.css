@@ -202,12 +202,37 @@ video {
 }
 
 .portal-sidebar {
+  position: relative;
+  isolation: isolate;
   background-color: #091c37;
+  color: #ffffff;
+}
+
+.portal-sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   background-image: url("/sidebar-bg1.png?v=2");
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
-  color: #ffffff;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.portal-sidebar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgba(6, 22, 48, 0.68);
+  pointer-events: none;
+}
+
+.portal-sidebar > * {
+  position: relative;
+  z-index: 2;
 }
 
 .portal-topbar {
