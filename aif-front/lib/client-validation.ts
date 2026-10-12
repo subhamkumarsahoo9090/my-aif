@@ -48,6 +48,9 @@ export type CreateClientInput = {
   dateOfBirth: string;
   address: string;
   tradingCode: string;
+  dpClientId?: string;
+  dpName?: string;
+  ckycNo?: string;
   nominees: Nominee[];
   bank: BankAccount;
   status: ClientStatus;
@@ -96,11 +99,14 @@ export function validateCreateClient(input: {
   dateOfBirth: string;
   address: string;
   tradingCode: string;
+  dpClientId?: string;
+  dpName?: string;
+  ckycNo?: string;
   nominees: Nominee[];
   bank: BankAccount;
   status: string;
   kra: boolean;
-}): { ok: true; value: CreateClientInput } | { ok: false; errors: Record<string, string>; message: string } {
+}, options?: { requireNomineeShareTotal?: boolean }): { ok: true; value: CreateClientInput } | { ok: false; errors: Record<string, string>; message: string } {
   const errors: Record<string, string> = {};
   const fullName = input.fullName.trim();
   const fatherName = input.fatherName.trim();
@@ -161,13 +167,63 @@ export function validateCreateClient(input: {
   const nominees = input.nominees.map((nominee) => ({
     name: nominee.name.trim(),
     relationship: nominee.relationship.trim(),
+    dateOfBirth: nominee.dateOfBirth?.trim() ?? "",
+    mobile: nominee.mobile?.trim() ? normalizeMobile(nominee.mobile) : "",
+    email: nominee.email?.trim().toLowerCase() ?? "",
+    pan: nominee.pan?.trim().toUpperCase() ?? "",
+    address: nominee.address?.trim() ?? "",
+    share: nominee.share?.trim().replace(/%/g, "") ?? "",
   }));
   nominees.forEach((nominee, index) => {
     if (!nominee.name) errors[`nominees.${index}.name`] = "Enter the nominee name.";
     else if (!personNamePattern.test(nominee.name)) errors[`nominees.${index}.name`] = "Use letters only for the nominee name.";
     if (!nominee.relationship) errors[`nominees.${index}.relationship`] = "Choose the nominee relationship.";
     else if (!placePattern.test(nominee.relationship)) errors[`nominees.${index}.relationship`] = "Use letters only for the relationship.";
+    if (nominee.dateOfBirth && (ageInYears(nominee.dateOfBirth) == null || ageInYears(nominee.dateOfBirth)! < 0)) {
+      errors[`nominees.${index}.dateOfBirth`] = "Choose a valid date of birth.";
+    }
+    if (nominee.mobile && !/^[6-9]\d{9}$/.test(nominee.mobile)) {
+      errors[`nominees.${index}.mobile`] = "Enter a 10-digit Indian mobile number starting with 6, 7, 8, or 9.";
+    }
+    if (nominee.email && !emailPattern.test(nominee.email)) {
+      errors[`nominees.${index}.email`] = "Enter a valid email address.";
+    }
+    if (nominee.pan && !panPattern.test(nominee.pan)) {
+      errors[`nominees.${index}.pan`] = "Enter a valid PAN, such as ABCDE1234F.";
+    }
+    if (nominee.address && nominee.address.length > 240) {
+      errors[`nominees.${index}.address`] = "Address must be 240 characters or fewer.";
+    }
+    if (nominee.share) {
+      const share = Number(nominee.share);
+      if (!/^\d{1,3}(\.\d{1,2})?$/.test(nominee.share) || Number.isNaN(share) || share < 0 || share > 100) {
+        errors[`nominees.${index}.share`] = "Enter a share from 0 to 100.";
+      }
+    }
   });
+  const filledShares = nominees.filter((nominee) => nominee.share);
+  if (options?.requireNomineeShareTotal || filledShares.length > 0) {
+    const totalCents = nominees.reduce((sum, nominee) => {
+      if (!/^\d{1,3}(\.\d{1,2})?$/.test(nominee.share)) return sum;
+      return sum + Math.round(Number(nominee.share) * 100);
+    }, 0);
+    if (filledShares.length !== nominees.length || totalCents !== 10000) {
+      errors.nominees = "Nominee shares must add up to 100%.";
+    }
+  }
+
+  const dpClientId = (input.dpClientId ?? "").trim();
+  const dpName = (input.dpName ?? "").trim();
+  if (dpClientId && !/^[A-Za-z0-9-]{1,20}$/.test(dpClientId)) {
+    errors.dpClientId = "DP Client ID can use letters, numbers, and hyphens only.";
+  }
+  if (dpName && !/^[A-Za-z0-9][A-Za-z0-9 .,'&/-]{1,79}$/.test(dpName)) {
+    errors.dpName = "Enter a valid DP name.";
+  }
+  const ckycNo = (input.ckycNo ?? "").trim();
+  if (ckycNo && !/^\d{14}$/.test(ckycNo)) {
+    errors.ckycNo = "Enter a 14-digit CKYC number.";
+  }
 
   const bank = input.bank;
   const accountNumber = bank.accountNumber.replace(/\s/g, "");
@@ -178,6 +234,7 @@ export function validateCreateClient(input: {
   const bankName = bank.bankName.trim();
   const micrCode = bank.micrCode.replace(/\s/g, "");
   const accountType = bank.accountType.trim();
+  const bankAddress = bank.bankAddress?.trim() ?? "";
   const dpOrderId = bank.dpOrderId.trim();
 
   if (!accountNumber) errors["bank.accountNumber"] = "Enter the account number.";
@@ -201,6 +258,8 @@ export function validateCreateClient(input: {
 
   if (!accountType) errors["bank.accountType"] = "Choose the account type.";
   else if (!accountTypes.includes(accountType as (typeof accountTypes)[number])) errors["bank.accountType"] = "Choose Savings, Current, NRE, or NRO.";
+
+  if (bankAddress.length > 240) errors["bank.bankAddress"] = "Bank address must be 240 characters or fewer.";
 
   if (!bank.isPrimary) errors["bank.isPrimary"] = "Mark this bank account as primary.";
 
@@ -231,6 +290,9 @@ export function validateCreateClient(input: {
       dateOfBirth,
       address,
       tradingCode,
+      dpClientId,
+      dpName,
+      ckycNo,
       nominees,
       bank: {
         accountNumber,
@@ -241,6 +303,7 @@ export function validateCreateClient(input: {
         bankName,
         micrCode,
         accountType,
+        bankAddress,
         isPrimary: true,
         dpOrderId,
       },
@@ -258,7 +321,16 @@ export function readCreateClientBody(body: unknown) {
   const nominees = Array.isArray(record.nominees)
     ? record.nominees.map((item) => {
         const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
-        return { name: text(row.name), relationship: text(row.relationship) };
+        return {
+          name: text(row.name),
+          relationship: text(row.relationship),
+          dateOfBirth: text(row.dateOfBirth),
+          mobile: text(row.mobile),
+          email: text(row.email),
+          pan: text(row.pan),
+          address: text(row.address),
+          share: text(row.share),
+        };
       })
     : [];
   const bankRecord = record.bank && typeof record.bank === "object" ? (record.bank as Record<string, unknown>) : {};
@@ -275,6 +347,9 @@ export function readCreateClientBody(body: unknown) {
     dateOfBirth: text(record.dateOfBirth),
     address: text(record.address),
     tradingCode: text(record.tradingCode),
+    dpClientId: text(record.dpClientId),
+    dpName: text(record.dpName),
+    ckycNo: text(record.ckycNo),
     nominees,
     bank: {
       accountNumber: text(bankRecord.accountNumber),
@@ -285,12 +360,13 @@ export function readCreateClientBody(body: unknown) {
       bankName: text(bankRecord.bankName),
       micrCode: text(bankRecord.micrCode),
       accountType: text(bankRecord.accountType),
+      bankAddress: text(bankRecord.bankAddress),
       isPrimary: bankRecord.isPrimary === true,
       dpOrderId: text(bankRecord.dpOrderId),
     },
     status: text(record.status) || "active",
     kra: record.kra === true,
-  });
+  }, { requireNomineeShareTotal: true });
 }
 
 export function nomineeList(profile: Pick<InvestorProfile, "nominees" | "nomineeName" | "nomineeRelationship">) {

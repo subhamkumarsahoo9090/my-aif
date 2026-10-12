@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { api, apiFetch } from "@/config/endapi";
 import { accountTypes, annualIncomes, maritalStatuses, maxAdultDob, occupations, validateCreateClient } from "@/lib/client-validation";
+import { formatShareCents, nomineeShareTotalCents } from "@/lib/nominee-share";
 import type { BankAccount, Nominee } from "@/lib/types";
 import { errorClass } from "@/components/ui/classes";
 import DateField from "@/components/ui/DateField";
@@ -17,6 +18,12 @@ const emptyNominee = (): NomineeDraft => ({
   relationship: "",
   relationshipChoice: "",
   relationshipOther: "",
+  dateOfBirth: "",
+  mobile: "",
+  email: "",
+  pan: "",
+  address: "",
+  share: "",
 });
 
 const emptyBank = (): BankAccount => ({
@@ -28,6 +35,7 @@ const emptyBank = (): BankAccount => ({
   bankName: "",
   micrCode: "",
   accountType: "",
+  bankAddress: "",
   isPrimary: true,
   dpOrderId: "",
 });
@@ -47,6 +55,9 @@ export default function ClientForm() {
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [address, setAddress] = useState("");
   const [tradingCode, setTradingCode] = useState("");
+  const [dpClientId, setDpClientId] = useState("");
+  const [dpName, setDpName] = useState("");
+  const [ckycNo, setCkycNo] = useState("");
   const [status, setStatus] = useState("active");
   const [kra, setKra] = useState(false);
   const [nominees, setNominees] = useState<NomineeDraft[]>([emptyNominee()]);
@@ -79,6 +90,9 @@ export default function ClientForm() {
     setDateOfBirth("");
     setAddress("");
     setTradingCode("");
+    setDpClientId("");
+    setDpName("");
+    setCkycNo("");
     setStatus("active");
     setKra(false);
     setNominees([emptyNominee()]);
@@ -133,6 +147,12 @@ export default function ClientForm() {
     const preparedNominees = nominees.map((nominee) => ({
       name: nominee.name,
       relationship: nominee.relationshipChoice === "Other" ? nominee.relationshipOther : nominee.relationshipChoice,
+      dateOfBirth: nominee.dateOfBirth ?? "",
+      mobile: nominee.mobile ?? "",
+      email: nominee.email ?? "",
+      pan: nominee.pan ?? "",
+      address: nominee.address ?? "",
+      share: nominee.share ?? "",
     }));
     const parsed = validateCreateClient({
       fullName,
@@ -147,11 +167,14 @@ export default function ClientForm() {
       dateOfBirth,
       address,
       tradingCode,
+      dpClientId,
+      dpName,
+      ckycNo,
       nominees: preparedNominees,
       bank,
       status,
       kra,
-    });
+    }, { requireNomineeShareTotal: true });
     if (!parsed.ok) {
       setErrors(parsed.errors);
       setFormError(parsed.message);
@@ -179,52 +202,21 @@ export default function ClientForm() {
       <section className={cardClass}>
         <SectionHeading index="1" icon={<UserIcon />} title="Personal Details" subtitle="Basic information about the client" />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <TextField required icon={<UserIcon />} label="Full name" value={fullName} error={errors.fullName} onChange={setFullName} autoComplete="name" placeholder="Enter full name" />
           <TextField required icon={<TrendIcon />} label="Trading Code" value={tradingCode} error={errors.tradingCode} onChange={setTradingCode} placeholder="Enter trading code" />
-          <TextField required label="Father's name" value={fatherName} error={errors.fatherName} onChange={setFatherName} autoComplete="off" placeholder="Enter father's name" />
-          <TextField required label="Mother's name" value={motherName} error={errors.motherName} onChange={setMotherName} autoComplete="off" placeholder="Enter mother's name" />
-          <SelectField
+          <TextField label="DP Client ID" value={dpClientId} error={errors.dpClientId} onChange={setDpClientId} placeholder="Enter DP client ID" />
+          <TextField required icon={<UserIcon />} label="Full Name" value={fullName} error={errors.fullName} onChange={setFullName} autoComplete="name" placeholder="Enter full name" />
+          <TextField
             required
-            label="Occupation"
-            value={occupation}
-            error={occupation === "Other" ? undefined : errors.occupation}
-            onChange={setOccupation}
-            placeholder="Select occupation"
-            options={occupations.map((item) => ({ value: item, label: item }))}
+            icon={<CardIcon />}
+            label="PAN"
+            value={pan}
+            error={errors.pan}
+            onChange={setPan}
+            autoComplete="off"
+            maxLength={10}
+            placeholder="ABCDE1234F"
+            panFormat
           />
-          {occupation === "Other" ? (
-            <TextField required label="Specify occupation" value={occupationOther} error={errors.occupation} onChange={setOccupationOther} placeholder="Enter occupation" />
-          ) : null}
-          <SelectField
-            required
-            label="Marital status"
-            value={maritalStatus}
-            error={errors.maritalStatus}
-            onChange={setMaritalStatus}
-            placeholder="Select marital status"
-            options={maritalStatuses.map((item) => ({ value: item, label: item }))}
-          />
-          <SelectField
-            required
-            label="Annual income"
-            value={annualIncome}
-            error={errors.annualIncome}
-            onChange={setAnnualIncome}
-            placeholder="Select annual income"
-            options={annualIncomes.map((item) => ({ value: item, label: item }))}
-          />
-          <label className="text-sm">
-            <FieldLabel required>DOB</FieldLabel>
-            <DateField
-              required
-              min="1900-01-01"
-              max={adultDob}
-              value={dateOfBirth}
-              onChange={setDateOfBirth}
-              className={`${fieldClass} pr-10! ${errors.dateOfBirth ? "border-danger" : ""}`}
-            />
-            {errors.dateOfBirth ? <span className={`mt-1 block ${errorClass}`}>{errors.dateOfBirth}</span> : null}
-          </label>
           <TextField required icon={<MailIcon />} label="Email" type="email" value={email} error={errors.email} onChange={setEmail} autoComplete="email" inputMode="email" placeholder="example@domain.com" />
           <TextField
             required
@@ -239,39 +231,91 @@ export default function ClientForm() {
             maxLength={10}
             digitsOnly
           />
-          <TextField
+          <SelectField
             required
-            icon={<CardIcon />}
-            label="PAN"
-            value={pan}
-            error={errors.pan}
-            onChange={setPan}
-            autoComplete="off"
-            maxLength={10}
-            placeholder="ABCDE1234F"
-            panFormat
+            label="Marital Status"
+            value={maritalStatus}
+            error={errors.maritalStatus}
+            onChange={setMaritalStatus}
+            placeholder="Select marital status"
+            options={maritalStatuses.map((item) => ({ value: item, label: item }))}
           />
-          <TextField required icon={<PinIcon />} className="xl:col-span-2" label="Address" value={address} error={errors.address} onChange={setAddress} autoComplete="street-address" placeholder="Enter full address" />
+          <label className="text-sm">
+            <FieldLabel required>Date of Birth</FieldLabel>
+            <DateField
+              required
+              min="1900-01-01"
+              max={adultDob}
+              value={dateOfBirth}
+              onChange={setDateOfBirth}
+              className={`${fieldClass} pr-10! ${errors.dateOfBirth ? "border-danger" : ""}`}
+            />
+            {errors.dateOfBirth ? <span className={`mt-1 block ${errorClass}`}>{errors.dateOfBirth}</span> : null}
+          </label>
+          <SelectField
+            required
+            label="Occupation"
+            value={occupation}
+            error={occupation === "Other" ? undefined : errors.occupation}
+            onChange={setOccupation}
+            placeholder="Select occupation"
+            options={occupations.map((item) => ({ value: item, label: item }))}
+          />
+          {occupation === "Other" ? (
+            <TextField required label="Specify occupation" value={occupationOther} error={errors.occupation} onChange={setOccupationOther} placeholder="Enter occupation" />
+          ) : null}
+          <SelectField
+            required
+            label="Annual Income"
+            value={annualIncome}
+            error={errors.annualIncome}
+            onChange={setAnnualIncome}
+            placeholder="Select annual income"
+            options={annualIncomes.map((item) => ({ value: item, label: item }))}
+          />
+          <SelectField
+            required
+            label="Status"
+            value={status}
+            error={errors.status}
+            onChange={setStatus}
+            options={[
+              { value: "active", label: "Active" },
+              { value: "inactive", label: "Inactive" },
+            ]}
+          />
+          <TextField required label="Father's Name" value={fatherName} error={errors.fatherName} onChange={setFatherName} autoComplete="off" placeholder="Enter father's name" />
+          <div className="grid gap-4 sm:grid-cols-2 md:col-span-2 xl:col-span-3">
+            <TextField required label="Mother's Name" value={motherName} error={errors.motherName} onChange={setMotherName} autoComplete="off" placeholder="Enter mother's name" />
+            <TextField label="DP Name" value={dpName} error={errors.dpName} onChange={setDpName} placeholder="Enter DP name" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 md:col-span-2 xl:col-span-3">
+            <TextField required icon={<PinIcon />} label="Address" value={address} error={errors.address} onChange={setAddress} autoComplete="street-address" placeholder="Enter full address" />
+            <TextField label="CKYC No." value={ckycNo} error={errors.ckycNo} onChange={setCkycNo} inputMode="numeric" placeholder="14-digit CKYC number" maxLength={14} digitsOnly />
+          </div>
         </div>
       </section>
 
       <section className={cardClass}>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <SectionHeading className="mb-0" index="2" icon={<UsersIcon />} title="Nominees" subtitle="Add nominee details for the account" />
+          <SectionHeading className="mb-0" index="2" icon={<UsersIcon />} title="Nominees" subtitle="Nominee shares must add up to 100%." />
           <button type="button" className={outlineButtonClass} onClick={() => setNominees((current) => [...current, emptyNominee()])}>
             <PlusIcon />
             Add nominee
           </button>
         </div>
         {errors.nominees ? <p className={`mb-3 ${errorClass}`}>{errors.nominees}</p> : null}
+        <p className={`mb-3 text-sm font-semibold ${nomineeShareTotalCents(nominees) === 10000 ? "text-[#16324F]" : "text-danger"}`}>
+          Total nominee share: {formatShareCents(nomineeShareTotalCents(nominees))}%
+        </p>
         <div className="flex flex-col gap-4">
           {nominees.map((nominee, index) => (
-            <div key={index} className="grid gap-4 md:grid-cols-2">
-              <p className="text-sm font-medium text-[#1B3C6C] md:col-span-2">Nominee {index + 1}</p>
+            <div key={index} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <p className="text-sm font-medium text-[#1B3C6C] md:col-span-2 xl:col-span-3">Nominee {index + 1}</p>
               <TextField
                 required
                 icon={<UserIcon />}
-                label="Nominee name"
+                label="Nominee Name"
                 value={nominee.name}
                 error={errors[`nominees.${index}.name`]}
                 onChange={(value) => updateNominee(index, { name: value })}
@@ -279,7 +323,7 @@ export default function ClientForm() {
               />
               <SelectField
                 required
-                label="Nominee relationship"
+                label="Relationship with Nominee"
                 value={nominee.relationshipChoice}
                 error={nominee.relationshipChoice === "Other" ? undefined : errors[`nominees.${index}.relationship`]}
                 onChange={(value) => updateNominee(index, { relationshipChoice: value })}
@@ -296,8 +340,61 @@ export default function ClientForm() {
                   placeholder="Enter relationship"
                 />
               ) : null}
+              <label className="text-sm">
+                <FieldLabel>Date of Birth</FieldLabel>
+                <DateField
+                  min="1900-01-01"
+                  value={nominee.dateOfBirth ?? ""}
+                  onChange={(value) => updateNominee(index, { dateOfBirth: value })}
+                  className={`${fieldClass} pr-10! ${errors[`nominees.${index}.dateOfBirth`] ? "border-danger" : ""}`}
+                />
+                {errors[`nominees.${index}.dateOfBirth`] ? <span className={`mt-1 block ${errorClass}`}>{errors[`nominees.${index}.dateOfBirth`]}</span> : null}
+              </label>
+              <TextField
+                label="Mobile Number"
+                value={nominee.mobile ?? ""}
+                error={errors[`nominees.${index}.mobile`]}
+                onChange={(value) => updateNominee(index, { mobile: value })}
+                inputMode="numeric"
+                placeholder="10-digit mobile number"
+                maxLength={10}
+                digitsOnly
+              />
+              <TextField
+                label="Email"
+                type="email"
+                value={nominee.email ?? ""}
+                error={errors[`nominees.${index}.email`]}
+                onChange={(value) => updateNominee(index, { email: value })}
+                placeholder="example@domain.com"
+              />
+              <TextField
+                label="PAN"
+                value={nominee.pan ?? ""}
+                error={errors[`nominees.${index}.pan`]}
+                onChange={(value) => updateNominee(index, { pan: value })}
+                maxLength={10}
+                placeholder="ABCDE1234F"
+                panFormat
+              />
+              <TextField
+                className="xl:col-span-2"
+                label="Address"
+                value={nominee.address ?? ""}
+                error={errors[`nominees.${index}.address`]}
+                onChange={(value) => updateNominee(index, { address: value })}
+                placeholder="Enter address"
+              />
+              <TextField
+                label="Nominee Share (%)"
+                value={nominee.share ?? ""}
+                error={errors[`nominees.${index}.share`]}
+                onChange={(value) => updateNominee(index, { share: value.replace(/[^\d.]/g, "").slice(0, 6) })}
+                inputMode="decimal"
+                placeholder="0 to 100"
+              />
               {nominees.length > 1 ? (
-                <div className="md:col-span-2">
+                <div className="md:col-span-2 xl:col-span-3">
                   <button
                     type="button"
                     className="text-sm font-medium text-[#F97316] hover:underline"
@@ -315,23 +412,23 @@ export default function ClientForm() {
       <section className={cardClass}>
         <SectionHeading index="3" icon={<BankIcon />} title="Bank Details" subtitle="Bank account and IFSC details" />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <TextField required label="Account holder name" value={bank.accountHolderName} error={errors["bank.accountHolderName"]} onChange={(value) => updateBank({ accountHolderName: value })} placeholder="Enter account holder name" />
-          <TextField required label="Account number" value={bank.accountNumber} error={errors["bank.accountNumber"]} onChange={(value) => updateBank({ accountNumber: value })} inputMode="numeric" placeholder="Enter account number" />
-          <TextField required label="IFSC code" value={bank.ifsccode} error={errors["bank.ifsccode"]} onChange={(value) => updateBank({ ifsccode: value.toUpperCase() })} maxLength={11} placeholder="Enter IFSC code" />
+          <TextField required label="Bank Name" value={bank.bankName} error={errors["bank.bankName"]} onChange={(value) => updateBank({ bankName: value })} placeholder="Enter bank name" />
+          <TextField required label="Account Holder Name" value={bank.accountHolderName} error={errors["bank.accountHolderName"]} onChange={(value) => updateBank({ accountHolderName: value })} placeholder="Enter account holder name" />
+          <TextField required label="Account Number" value={bank.accountNumber} error={errors["bank.accountNumber"]} onChange={(value) => updateBank({ accountNumber: value })} inputMode="numeric" placeholder="Enter account number" />
+          <TextField required label="IFSC Code" value={bank.ifsccode} error={errors["bank.ifsccode"]} onChange={(value) => updateBank({ ifsccode: value.toUpperCase() })} maxLength={11} placeholder="Enter IFSC code" />
           {branchNote ? <p className="text-xs text-muted md:col-span-2 xl:col-span-3">{branchNote}</p> : null}
-          <TextField required label="Bank name" value={bank.bankName} error={errors["bank.bankName"]} onChange={(value) => updateBank({ bankName: value })} placeholder="Enter bank name" />
-          <TextField required label="Bank city" value={bank.bankCity} error={errors["bank.bankCity"]} onChange={(value) => updateBank({ bankCity: value })} placeholder="Enter bank city" />
+          <TextField icon={<TargetIcon />} label="MICR Code" value={bank.micrCode} error={errors["bank.micrCode"]} onChange={(value) => updateBank({ micrCode: value })} inputMode="numeric" maxLength={9} placeholder="Enter MICR code" />
+          <TextField required label="Bank City" value={bank.bankCity} error={errors["bank.bankCity"]} onChange={(value) => updateBank({ bankCity: value })} placeholder="Enter bank city" />
           <SelectField
             required
-            label="Account type"
+            label="Account Type"
             value={bank.accountType}
             error={errors["bank.accountType"]}
             onChange={(value) => updateBank({ accountType: value })}
             placeholder="Select account type"
             options={accountTypes.map((type) => ({ value: type, label: type }))}
           />
-          <TextField icon={<AtIcon />} label="UPI ID" value={bank.upiId} error={errors["bank.upiId"]} onChange={(value) => updateBank({ upiId: value })} placeholder="name@bank" />
-          <TextField icon={<TargetIcon />} label="MICR code" value={bank.micrCode} error={errors["bank.micrCode"]} onChange={(value) => updateBank({ micrCode: value })} inputMode="numeric" maxLength={9} placeholder="Enter MICR code" />
+          <TextField className="md:col-span-2 xl:col-span-3" label="Bank Address" value={bank.bankAddress ?? ""} error={errors["bank.bankAddress"]} onChange={(value) => updateBank({ bankAddress: value })} placeholder="Enter bank address" />
         </div>
         <label className="mt-4 flex items-center gap-2 text-sm font-medium text-[#1B3C6C]">
           <input
@@ -346,20 +443,8 @@ export default function ClientForm() {
       </section>
 
       <section className={cardClass}>
-        <SectionHeading index="4" icon={<ShieldIcon />} title="Status" subtitle="Set the client status and KRA verification" />
+        <SectionHeading index="4" icon={<ShieldIcon />} title="Compliance" subtitle="KRA verification" />
         <div className="flex flex-wrap items-end gap-6">
-          <div className="w-full max-w-xs">
-            <SelectField
-              required
-              label="Status"
-              value={status}
-              onChange={setStatus}
-              options={[
-                { value: "active", label: "Active" },
-                { value: "inactive", label: "Inactive" },
-              ]}
-            />
-          </div>
           <label className="mb-2.5 flex items-center gap-2 text-sm font-medium text-[#1B3C6C]">
             <input type="checkbox" checked={kra} onChange={(event) => setKra(event.target.checked)} className="h-4 w-4 accent-[#F97316]" />
             KRA verified
@@ -442,6 +527,7 @@ function TextField({
   required = false,
   icon,
   className = "",
+  onBlur,
 }: {
   label: string;
   value: string;
@@ -449,7 +535,7 @@ function TextField({
   onChange: (value: string) => void;
   type?: string;
   autoComplete?: string;
-  inputMode?: "email" | "tel" | "numeric" | "text";
+  inputMode?: "email" | "tel" | "numeric" | "decimal" | "text";
   placeholder?: string;
   maxLength?: number;
   digitsOnly?: boolean;
@@ -457,6 +543,7 @@ function TextField({
   required?: boolean;
   icon?: ReactNode;
   className?: string;
+  onBlur?: () => void;
 }) {
   const [caret, setCaret] = useState(0);
   const panDigitSlot = panFormat && caret >= 5 && caret <= 8;
@@ -517,6 +604,7 @@ function TextField({
           }
           onChange(event.target.value);
         }}
+        onBlur={onBlur}
         className={`${fieldClass} ${icon ? "pl-10!" : ""} ${error ? "border-danger" : ""}`}
         aria-invalid={error ? true : undefined}
       />
@@ -660,15 +748,6 @@ function ShieldIcon() {
   return (
     <Icon>
       <path d="M12 3.5 19 6.2v5.3c0 4-2.8 6.8-7 8.5-4.2-1.7-7-4.5-7-8.5V6.2L12 3.5Z" strokeLinejoin="round" />
-    </Icon>
-  );
-}
-
-function AtIcon() {
-  return (
-    <Icon>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M15 12v1.2a1.8 1.8 0 0 0 3.2 1.1A7 7 0 1 1 16.5 6.5" strokeLinecap="round" />
     </Icon>
   );
 }

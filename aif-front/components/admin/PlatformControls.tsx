@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState, type ReactNode, type SelectHTMLAttributes } from "react";
+import { LuPencil, LuTrash2 } from "react-icons/lu";
 import LoadError from "@/components/ui/LoadError";
 import Skeleton from "@/components/ui/Skeleton";
 import DateField from "@/components/ui/DateField";
@@ -9,24 +10,31 @@ import { usePortalResource } from "@/lib/use-portal-resource";
 
 type Platform = {
   kra: { endpoint: string; token: string; timeoutSeconds: number };
-  securities: Array<{ identifier: string; name: string; isin: string }>;
+  securities: Array<{ identifier: string; name: string; isin: string; symbol?: string }>;
   schedules: unknown[];
 };
+
+const defaultSecuritySymbol = "WEALTH DISCOVERY INVESTMENT TRUST";
 
 export default function PlatformControls() {
   const { data, status, reload } = usePortalResource<Platform>(api.admin.platform);
   const clients = usePortalResource<{ clients: Array<{ code: string; name: string }> }>(api.admin.clients);
   const [message, setMessage] = useState<string | null>(null);
   const [pendingOverride, setPendingOverride] = useState<FormData | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Platform["securities"][number] | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [symbol, setSymbol] = useState(defaultSecuritySymbol);
+  const [securityName, setSecurityName] = useState("");
+  const [isin, setIsin] = useState("");
 
-  async function post(body: Record<string, unknown>) {
+  async function post(body: Record<string, unknown>, success = "Saved.") {
     const response = await apiFetch(api.admin.platform, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     const payload = (await response.json().catch(() => ({}))) as { message?: string };
-    setMessage(response.ok ? "Saved." : payload.message ?? "The change could not be saved.");
+    setMessage(response.ok ? success : payload.message ?? "The change could not be saved.");
     if (response.ok) reload();
     return response.ok;
   }
@@ -39,9 +47,24 @@ export default function PlatformControls() {
 
   async function onSecurity(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = event.currentTarget;
-    await post({ action: "security", ...Object.fromEntries(new FormData(form).entries()) });
-    form.reset();
+    const ok = await post(
+      editingId
+        ? { action: "edit-security", identifier: editingId, name: securityName, isin, symbol }
+        : { action: "security", name: securityName, isin, symbol },
+      editingId ? "Security updated." : "Saved.",
+    );
+    if (!ok) return;
+    setEditingId(null);
+    setSymbol(defaultSecuritySymbol);
+    setSecurityName("");
+    setIsin("");
+  }
+
+  function editSecurity(security: Platform["securities"][number]) {
+    setEditingId(security.identifier);
+    setSymbol(security.symbol || defaultSecuritySymbol);
+    setSecurityName(security.name);
+    setIsin(security.isin || security.identifier);
   }
 
   async function confirmOverride() {
@@ -78,7 +101,7 @@ export default function PlatformControls() {
 
           <section className={cardClass}>
             <div className="px-5 pt-5">
-              <SectionHeading index="2" icon={<GridIcon />} title="Security master" subtitle="Symbols used when holdings are imported." />
+              <SectionHeading index="2" icon={<GridIcon />} title="Security master" subtitle="ISINs from holdings uploads, plus any security you add here." />
             </div>
             {data.securities.length === 0 ? (
               <p className="mx-5 mb-5 rounded-xl border border-dashed border-[#E3E8EF] px-3 py-6 text-center text-sm text-[#7B8794]">No securities yet.</p>
@@ -87,17 +110,40 @@ export default function PlatformControls() {
                 <table className="min-w-full text-left text-sm">
                   <thead className="border-y border-[#E6EDF5] text-xs uppercase tracking-wide text-[#7B8794]">
                     <tr>
+                      <th className="px-5 py-3 font-medium">ISIN Description</th>
+                      <th className="px-5 py-3 font-medium">ISIN Number</th>
                       <th className="px-5 py-3 font-medium">Symbol</th>
-                      <th className="px-5 py-3 font-medium">Name</th>
-                      <th className="px-5 py-3 font-medium">ISIN</th>
+                      <th className="px-5 py-3 font-medium"> </th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.securities.map((security) => (
                       <tr key={security.identifier} className="border-b border-[#EEF2F6] last:border-0">
-                        <td className="px-5 py-3 font-medium text-[#2E5FA5]">{security.identifier}</td>
                         <td className="px-5 py-3 text-[#16324F]">{security.name}</td>
-                        <td className="px-5 py-3 text-[#3D4C5E]">{security.isin}</td>
+                        <td className="px-5 py-3 font-medium text-[#2E5FA5]">{security.isin || security.identifier}</td>
+                        <td className="px-5 py-3 text-[#3D4C5E]">{security.symbol || "WEALTH DISCOVERY INVESTMENT TRUST"}</td>
+                        <td className="px-5 py-3 text-right">
+                          <span className="inline-flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#E7F0FF] text-[#1B3C6C] transition hover:bg-[#D5E4F8]"
+                              aria-label={`Edit ${security.name}`}
+                              title="Edit"
+                              onClick={() => editSecurity(security)}
+                            >
+                              <LuPencil className="h-4 w-4" aria-hidden="true" />
+                            </button>
+                            <button
+                              type="button"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#FFF1E8] text-[#EA6C0C] transition hover:bg-[#FFE0CC]"
+                              aria-label={`Delete ${security.name}`}
+                              title="Delete"
+                              onClick={() => setPendingDelete(security)}
+                            >
+                              <LuTrash2 className="h-4 w-4" aria-hidden="true" />
+                            </button>
+                          </span>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -105,10 +151,26 @@ export default function PlatformControls() {
               </div>
             )}
             <form onSubmit={onSecurity} className="grid gap-3 p-5 md:grid-cols-4">
-              <input name="identifier" placeholder="Symbol" required className={fieldClass} />
-              <input name="name" placeholder="Name" required className={fieldClass} />
-              <input name="isin" placeholder="ISIN" className={fieldClass} />
-              <button type="submit" className={orangeButtonClass}>Add security</button>
+              <input name="symbol" value={symbol} onChange={(event) => setSymbol(event.target.value)} required className={fieldClass} />
+              <input name="name" value={securityName} onChange={(event) => setSecurityName(event.target.value)} placeholder="ISIN Description" required className={fieldClass} />
+              <input name="isin" value={isin} onChange={(event) => setIsin(event.target.value)} placeholder="ISIN Number" required className={fieldClass} />
+              <div className="flex items-center gap-3">
+                <button type="submit" className={orangeButtonClass}>{editingId ? "Save changes" : "Add security"}</button>
+                {editingId ? (
+                  <button
+                    type="button"
+                    className={outlineButtonClass}
+                    onClick={() => {
+                      setEditingId(null);
+                      setSymbol(defaultSecuritySymbol);
+                      setSecurityName("");
+                      setIsin("");
+                    }}
+                  >
+                    Cancel
+                  </button>
+                ) : null}
+              </div>
             </form>
           </section>
 
@@ -153,6 +215,43 @@ export default function PlatformControls() {
             </div>
           </form>
         </>
+      ) : null}
+      {pendingDelete ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#16324F]/35 p-4" onClick={() => setPendingDelete(null)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-security-title"
+            className="w-full max-w-sm rounded-2xl border border-[#E6EDF5] bg-white p-5 shadow-[0_16px_40px_rgba(20,50,90,0.16)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFF1E8] text-[#EA6C0C]">
+                <LuTrash2 className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div>
+                <h2 id="delete-security-title" className="text-base font-semibold text-[#16324F]">Remove security</h2>
+                <p className="mt-1 text-sm leading-5 text-[#7B8794]">
+                  {pendingDelete.name} will be removed from Security master. Holdings already saved for clients stay as they are.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-3">
+              <button type="button" className={outlineButtonClass} onClick={() => setPendingDelete(null)}>Cancel</button>
+              <button
+                type="button"
+                className={orangeButtonClass}
+                onClick={() => {
+                  const identifier = pendingDelete.identifier;
+                  setPendingDelete(null);
+                  void post({ action: "delete-security", identifier }, "Security removed.");
+                }}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
       {pendingOverride ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

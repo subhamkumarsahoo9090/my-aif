@@ -9,7 +9,14 @@ import {
   knownSecurity,
   listPortals,
   listSecurities,
+  listHoldingRows,
+  listLedgerRows,
+  updateHoldingRow,
+  updateLedgerRow,
+  removeHoldingRow,
+  removeLedgerRow,
   saveSecurity,
+  removeSecurity,
   createClient,
   ready,
   removeInvestor,
@@ -465,18 +472,15 @@ export async function clientRecord(code: string) {
     portal,
     incomplete: isProfileIncomplete(portal.profile),
     documents: [
-      {
-        name: "PAN",
-        status: portal.profile.pan ? "On file" : "Missing",
-      },
-      {
-        name: "KRA",
-        status: portal.profile.kra ? "Verified" : "Pending",
-      },
-      {
-        name: "Bank proof",
-        status: portal.profile.accountNumber ? "On file" : "Missing",
-      },
+      { name: "PAN", status: portal.profile.pan ? "On file" : "Missing" },
+      { name: "Address Proof", status: portal.profile.address ? "On file" : "Missing" },
+      { name: "Signature", status: "Missing" },
+      { name: "KRA", status: portal.profile.kra ? "Verified" : "Pending" },
+      { name: "FATCA", status: portal.profile.fatca ? "On file" : "Pending" },
+      { name: "Nomination proof", status: portal.profile.nominees?.length ? "On file" : "Missing" },
+      { name: "Bank Proof", status: portal.profile.accountNumber ? "On file" : "Missing" },
+      { name: "Application form", status: "Missing" },
+      { name: "Other", status: "Missing" },
       ...portal.statements.map((statement) => ({
         name: statement.fileName,
         status: "Issued",
@@ -708,7 +712,6 @@ async function previewAllotmentRows(parsed: Array<{ line: number; values: Record
   return parsed.map((row) => {
     const source = row.values;
     const errors: string[] = [];
-    const srNo = cell(source, "sr. no.", "sr no.", "sr no", "sr. no", "s.no", "s. no.", "serial no");
     const isin = cell(source, "isin number", "isin", "isinnumber").toUpperCase();
     const description = cell(source, "isin description", "description", "isindescription");
     const allottee = cell(source, "name of allottee", "allottee", "allottee name");
@@ -732,7 +735,6 @@ async function previewAllotmentRows(parsed: Array<{ line: number; values: Record
       ok: errors.length === 0,
       errors,
       values: {
-        srno: srNo,
         isin,
         description,
         allotmentdate: allotmentDate,
@@ -791,6 +793,8 @@ export async function commitImport(actor: string, type: ImportKind, fileName: st
     grouped.set(code, list);
   });
 
+  if (type === "holdings") await rememberHoldingsSecurities(rows);
+
   for (const [code, group] of grouped) {
     if (type === "ledger") {
       await importLedgerRows(
@@ -820,7 +824,6 @@ export async function commitImport(actor: string, type: ImportKind, fileName: st
           quantity,
           averageCost,
           marketValue,
-          srNo: cell(row.values, "srno"),
           allotmentDate: cell(row.values, "allotmentdate"),
           allotteeName: cell(row.values, "allottee"),
           pan: cell(row.values, "pan"),
@@ -857,6 +860,17 @@ export async function commitImport(actor: string, type: ImportKind, fileName: st
 
   const errorReport = ["line,error", ...rows.filter((row) => !row.ok).map((row) => `${row.line},"${row.errors.join("; ")}"`)].join("\n");
   return { job, rows, errorReport };
+}
+
+async function rememberHoldingsSecurities(rows: ImportRow[]) {
+  const seen = new Set<string>();
+  for (const row of rows) {
+    const isin = cell(row.values, "isin", "identifier", "security").toUpperCase();
+    const description = cell(row.values, "description");
+    if (!/^[A-Z0-9]{12}$/.test(isin) || !description || seen.has(isin)) continue;
+    seen.add(isin);
+    await saveSecurity({ identifier: isin, name: description, isin });
+  }
 }
 
 export async function recentImports() {
@@ -1174,9 +1188,156 @@ export async function saveKra(actor: AdminUser, input: { endpoint: string; token
   return kraSettings;
 }
 
-export async function addSecurity(actor: AdminUser, input: { identifier: string; name: string; isin: string }) {
+export async function addSecurity(actor: AdminUser, input: { identifier: string; name: string; isin: string; symbol?: string }) {
   await ensureAdmin();
-  const saved = await saveSecurity(input);
+  const isin = input.isin.trim().toUpperCase();
+  const identifier = isin || input.identifier.trim().toUpperCase();
+  const saved = await saveSecurity({
+    identifier,
+    name: input.name,
+    isin,
+    symbol: input.symbol,
+  });
+  if (!saved) return null;
+  await recordAudit({
+    actor: actor.name,
+    userId: actor.id,
+    action: "Security master updated",
+    targetEntity: "security",
+    entityId: saved.identifier,
+    detail: `${saved.name} · ${saved.isin}`,
+  });
+  return saved;
+}
+
+export async function deleteSecurity(actor: AdminUser, identifier: string) {
+  await ensureAdmin();
+  const key = identifier.trim().toUpperCase();
+  const current = (await listSecurities()).find((item) => item.identifier === key);
+  const removed = await removeSecurity(key);
+  if (!removed) return null;
+  await recordAudit({
+    actor: actor.name,
+    userId: actor.id,
+    action: "Security master updated",
+    targetEntity: "security",
+    entityId: key,
+    detail: `Removed ${current?.name ?? key}`,
+  });
+  return { ok: true };
+}
+
+export async function editHolding(
+  actor: AdminUser,
+  input: {
+    clientCode: string;
+    holdingId: string;
+    nextClientCode: string;
+    identifier: string;
+    name: string;
+    quantity: number;
+    allotmentDate: string;
+    allotteeName: string;
+    pan: string;
+  },
+) {
+  await ensureAdmin();
+  const result = await updateHoldingRow(input);
+  if ("error" in result) return result;
+  await recordAudit({
+    actor: actor.name,
+    userId: actor.id,
+    action: "Holding updated",
+    targetEntity: "holding",
+    entityId: result.holding.id,
+    clientCode: input.nextClientCode,
+    detail: `${result.holding.name} · ${result.holding.identifier}`,
+  });
+  return { ok: true as const };
+}
+
+export async function deleteHolding(actor: AdminUser, clientCode: string, holdingId: string) {
+  await ensureAdmin();
+  const removed = await removeHoldingRow(clientCode, holdingId);
+  if (!removed) return null;
+  await recordAudit({
+    actor: actor.name,
+    userId: actor.id,
+    action: "Holding removed",
+    targetEntity: "holding",
+    entityId: holdingId,
+    clientCode,
+    detail: `Removed ${removed.name} · ${removed.identifier}`,
+  });
+  return { ok: true as const };
+}
+
+export async function editLedger(
+  actor: AdminUser,
+  input: {
+    clientCode: string;
+    ledgerId: string;
+    nextClientCode: string;
+    date: string;
+    type: "debit" | "credit";
+    amount: number;
+    particulars: string;
+    vchType: string;
+    vchNo: string;
+  },
+) {
+  await ensureAdmin();
+  const result = await updateLedgerRow(input);
+  if ("error" in result) return result;
+  await recordAudit({
+    actor: actor.name,
+    userId: actor.id,
+    action: "Ledger updated",
+    targetEntity: "ledger",
+    entityId: result.row.id,
+    clientCode: input.nextClientCode,
+    detail: `${result.row.date} · ${result.row.narration}`,
+  });
+  return { ok: true as const };
+}
+
+export async function deleteLedger(actor: AdminUser, clientCode: string, ledgerId: string) {
+  await ensureAdmin();
+  const removed = await removeLedgerRow(clientCode, ledgerId);
+  if (!removed) return null;
+  await recordAudit({
+    actor: actor.name,
+    userId: actor.id,
+    action: "Ledger row removed",
+    targetEntity: "ledger",
+    entityId: ledgerId,
+    clientCode,
+    detail: `Removed ${removed.date} · ${removed.narration}`,
+  });
+  return { ok: true as const };
+}
+
+export async function updateSecurity(
+  actor: AdminUser,
+  input: { identifier: string; name: string; isin: string; symbol?: string },
+) {
+  await ensureAdmin();
+  const previous = input.identifier.trim().toUpperCase();
+  const isin = input.isin.trim().toUpperCase();
+  const nextKey = isin || previous;
+  if (!previous || !input.name.trim() || !nextKey) return null;
+  const listed = await listSecurities();
+  if (!listed.some((item) => item.identifier === previous)) return null;
+  if (nextKey !== previous && listed.some((item) => item.identifier === nextKey)) {
+    return { error: "This ISIN number is already in Security master." as const };
+  }
+  if (nextKey !== previous) await removeSecurity(previous);
+  const saved = await saveSecurity({
+    identifier: nextKey,
+    name: input.name,
+    isin,
+    symbol: input.symbol,
+  });
   if (!saved) return null;
   await recordAudit({
     actor: actor.name,

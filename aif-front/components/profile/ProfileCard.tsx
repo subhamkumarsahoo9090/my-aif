@@ -89,16 +89,21 @@ function Panel({
   chip,
   children,
   delay,
+  fit = "fill",
+  className = "",
 }: {
   title: string;
   icon: ReactNode;
   chip: string;
   children: ReactNode;
   delay: string;
+  fit?: "fill" | "content";
+  className?: string;
 }) {
+  const fill = fit === "fill";
   return (
-    <section className="dash-rise h-full" style={{ animationDelay: delay }}>
-      <div className="dash-card flex h-full flex-col rounded-2xl border border-[#E6EDF5] bg-white p-4 shadow-[0_8px_24px_rgba(20,50,90,0.04)] sm:p-5">
+    <section className={`dash-rise ${fill ? "h-full" : ""} ${className}`} style={{ animationDelay: delay }}>
+      <div className={`dash-card flex flex-col rounded-2xl border border-[#E6EDF5] bg-white p-4 shadow-[0_8px_24px_rgba(20,50,90,0.04)] sm:p-5 ${fill ? "h-full" : ""}`}>
       <div className="mb-1 flex items-center gap-2.5">
         <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${chip}`}>{icon}</span>
         <h2 className="text-sm font-semibold text-[#16324F]">{title}</h2>
@@ -262,7 +267,7 @@ function ProfileView({ profile }: { profile: InvestorProfile }) {
         </div>
       </section>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <StatTile
           label="Trading code"
           value={shown(profile.tradingCode)}
@@ -293,6 +298,14 @@ function ProfileView({ profile }: { profile: InvestorProfile }) {
           chip="bg-[var(--pm-nav-ledger-bg)] text-[var(--pm-nav-ledger-color)]"
           icon={<LuBriefcase className="h-4 w-4" aria-hidden="true" />}
         />
+        <StatTile
+          label="CKYC No."
+          value={shown(profile.ckycNo)}
+          copy
+          delay="360ms"
+          chip="bg-[var(--pm-nav-statements-bg)] text-[var(--pm-nav-statements-color)]"
+          icon={<LuBadgeCheck className="h-4 w-4" aria-hidden="true" />}
+        />
       </div>
 
       <div className="grid items-start gap-4 xl:grid-cols-3">
@@ -300,7 +313,7 @@ function ProfileView({ profile }: { profile: InvestorProfile }) {
           <dl>
             <InfoRow label="Full name" value={shown(profile.fullName)} />
             <InfoRow label="Trading code" value={shown(profile.tradingCode)} copy />
-            <InfoRow label="Trading Code" value={shown(primary?.dpOrderId)} />
+            <InfoRow label="DP Client ID" value={shown(primary?.dpOrderId)} />
             <InfoRow label="PAN number" value={shown(profile.pan)} copy />
             <InfoRow label="Date of birth" value={profile.dateOfBirth ? formatDob(profile.dateOfBirth) : "—"} />
           </dl>
@@ -314,12 +327,27 @@ function ProfileView({ profile }: { profile: InvestorProfile }) {
           </dl>
         </Panel>
 
-        <Panel title="Compliance status" delay="460ms" chip="bg-[var(--pm-nav-profile-bg)] text-[var(--pm-nav-profile-color)]" icon={<LuShieldCheck className="h-4 w-4" aria-hidden="true" />}>
-          <dl>
-            <ComplianceLine label="KRA status" ok={profile.kra} yes="Verified" no="Pending" icon={<LuShieldCheck className="h-4 w-4" aria-hidden="true" />} />
-            <ComplianceLine label="FATCA" ok={profile.fatca} yes="Yes" no="No" icon={<LuGlobe className="h-4 w-4" aria-hidden="true" />} />
-          </dl>
-        </Panel>
+        <div className="flex h-full flex-col gap-4 self-stretch xl:row-span-2">
+          <Panel fit="content" title="Compliance status" delay="460ms" chip="bg-[var(--pm-nav-profile-bg)] text-[var(--pm-nav-profile-color)]" icon={<LuShieldCheck className="h-4 w-4" aria-hidden="true" />}>
+            <dl>
+              <ComplianceLine label="KRA status" ok={profile.kra} yes="Verified" no="Pending" icon={<LuShieldCheck className="h-4 w-4" aria-hidden="true" />} />
+              <ComplianceLine label="FATCA" ok={profile.fatca} yes="Yes" no="No" icon={<LuGlobe className="h-4 w-4" aria-hidden="true" />} />
+            </dl>
+          </Panel>
+          <Panel className="min-h-0 flex-1" title="Bank details" delay="640ms" chip="bg-[var(--pm-nav-statements-bg)] text-[var(--pm-nav-statements-color)]" icon={<LuLandmark className="h-4 w-4" aria-hidden="true" />}>
+            {banks.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-[#E3E8EF] px-3 py-8 text-center text-sm text-[#7B8794]">
+                No bank account is on file.
+              </p>
+            ) : (
+              <ul className="grid gap-3 xl:pb-12">
+                {banks.map((bank, index) => (
+                  <BankBlock key={`${bank.accountNumber}-${index}`} bank={bank} index={index} />
+                ))}
+              </ul>
+            )}
+          </Panel>
+        </div>
 
         <Panel title="Family and income" delay="520ms" chip="bg-[var(--pm-nav-holdings-bg)] text-[var(--pm-nav-holdings-color)]" icon={<LuUsers className="h-4 w-4" aria-hidden="true" />}>
           <div className="grid grid-cols-2 gap-2">
@@ -351,20 +379,6 @@ function ProfileView({ profile }: { profile: InvestorProfile }) {
                     <p className="truncate text-xs text-[#7B8794]">{shown(nominee.relationship)}</p>
                   </div>
                 </li>
-              ))}
-            </ul>
-          )}
-        </Panel>
-
-        <Panel title="Bank details" delay="640ms" chip="bg-[var(--pm-nav-statements-bg)] text-[var(--pm-nav-statements-color)]" icon={<LuLandmark className="h-4 w-4" aria-hidden="true" />}>
-          {banks.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-[#E3E8EF] px-3 py-8 text-center text-sm text-[#7B8794]">
-              No bank account is on file.
-            </p>
-          ) : (
-            <ul className="grid gap-3">
-              {banks.map((bank, index) => (
-                <BankBlock key={`${bank.accountNumber}-${index}`} bank={bank} index={index} />
               ))}
             </ul>
           )}
@@ -420,7 +434,6 @@ function BankBlock({ bank, index }: { bank: BankAccount; index: number }) {
         <InfoRow label="IFSC code" value={shown(bank.ifsccode)} />
         <InfoRow label="Account type" value={shown(bank.accountType)} />
         <InfoRow label="Bank city" value={shown(bank.bankCity)} />
-        <InfoRow label="UPI ID" value={shown(bank.upiId)} />
         <InfoRow label="MICR code" value={shown(bank.micrCode)} />
       </dl>
     </li>

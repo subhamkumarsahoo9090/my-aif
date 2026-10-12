@@ -17,6 +17,10 @@ export const roles = controller(() => admin.roles());
 export const saveRoles = controller((req) => admin.saveRoles(req.body ?? {}));
 export const imports = controller(() => admin.imports());
 export const importFile = controller((req) => admin.importFile(req.body ?? {}));
+export const holdingRows = controller(() => admin.holdingRows());
+export const holdingAction = controller((req) => admin.holdingAction(req.body ?? {}));
+export const ledgerRows = controller(() => admin.ledgerRows());
+export const ledgerAction = controller((req) => admin.ledgerAction(req.body ?? {}));
 export const reports = controller(() => admin.reports());
 export const createReport = controller((req) => admin.createReport(req.body ?? {}));
 export async function reportFile(req, res, next) {

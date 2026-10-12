@@ -1,6 +1,12 @@
 import {
   accessFor,
   addSecurity,
+  deleteSecurity,
+  editHolding,
+  deleteHolding,
+  editLedger,
+  deleteLedger,
+  updateSecurity,
   adminOverview,
   authenticateStaff,
   clientRecord,
@@ -32,7 +38,7 @@ import {
 import { authorizeAdmin } from "../lib/admin-guard.js";
 import { openAdminSession, readAdminSession } from "../lib/session.js";
 import { readCreateClientBody } from "../lib/client-validation.js";
-import { getPortal } from "../lib/portal-store.js";
+import { getPortal, listHoldingRows, listLedgerRows, listSecurities } from "../lib/portal-store.js";
 import { statementDownloadName } from "../lib/pdf.js";
 import { renderStatement } from "../lib/statement-pdf.js";
 import { denied, fail, ok } from "./result.js";
@@ -45,6 +51,16 @@ function optionalText(body, key) {
   return typeof body[key] === "string" ? body[key].trim() : undefined;
 }
 
+function nomineeSharesTotal100(nominees) {
+  let total = 0;
+  for (const nominee of nominees) {
+    const share = typeof nominee.share === "string" ? nominee.share.trim().replace(/%/g, "") : "";
+    if (!/^\d{1,3}(\.\d{1,2})?$/.test(share)) return false;
+    total += Math.round(Number(share) * 100);
+  }
+  return total === 10000;
+}
+
 function readNominees(body) {
   if (!Array.isArray(body.nominees)) return undefined;
   return body.nominees
@@ -52,6 +68,12 @@ function readNominees(body) {
     .map((item) => ({
       name: typeof item.name === "string" ? item.name.trim() : "",
       relationship: typeof item.relationship === "string" ? item.relationship.trim() : "",
+      dateOfBirth: typeof item.dateOfBirth === "string" ? item.dateOfBirth.trim() : "",
+      mobile: typeof item.mobile === "string" ? item.mobile.trim() : "",
+      email: typeof item.email === "string" ? item.email.trim() : "",
+      pan: typeof item.pan === "string" ? item.pan.trim().toUpperCase() : "",
+      address: typeof item.address === "string" ? item.address.trim() : "",
+      share: typeof item.share === "string" ? item.share.trim() : "",
     }));
 }
 
@@ -68,6 +90,7 @@ function readBank(body) {
     bankName: value("bankName"),
     micrCode: value("micrCode"),
     accountType: value("accountType"),
+    bankAddress: value("bankAddress"),
     isPrimary: true,
     dpOrderId: value("dpOrderId"),
   };
@@ -155,6 +178,9 @@ export async function updateClient(code, body) {
 
   const status = body.status === "active" || body.status === "inactive" ? body.status : undefined;
   const nominees = readNominees(body);
+  if (nominees && nominees.length > 0 && !nomineeSharesTotal100(nominees)) {
+    return fail("Nominee shares must add up to 100%.", 400);
+  }
   const bank = readBank(body);
   const portal = await editClient(user.name, code, {
     fullName: optionalText(body, "fullName"),
@@ -165,6 +191,9 @@ export async function updateClient(code, body) {
     pan: optionalText(body, "pan")?.toUpperCase(),
     dateOfBirth: optionalText(body, "dateOfBirth"),
     address: optionalText(body, "address"),
+    dpClientId: optionalText(body, "dpClientId"),
+    dpName: optionalText(body, "dpName"),
+    ckycNo: optionalText(body, "ckycNo"),
     occupation: optionalText(body, "occupation"),
     maritalStatus: optionalText(body, "maritalStatus"),
     annualIncome: optionalText(body, "annualIncome"),
@@ -237,7 +266,7 @@ export async function saveRoles(body) {
 export async function imports() {
   const { blocked } = await adminOf("admin", "imports");
   if (blocked) return blocked;
-  return ok({ imports: await recentImports() });
+  return ok({ imports: await recentImports(), securities: await listSecurities() });
 }
 
 export async function importFile(body) {
@@ -260,6 +289,108 @@ export async function importFile(body) {
 
   const fileName = typeof body?.fileName === "string" ? body.fileName : `${type}.csv`;
   return ok(await commitImport(user.name, type, fileName, csv, clientCode));
+}
+
+export async function holdingRows() {
+  const { blocked } = await adminOf("admin", "imports");
+  if (blocked) return blocked;
+  return ok({ holdings: await listHoldingRows() });
+}
+
+export async function holdingAction(body) {
+  const { blocked, user } = await adminOf("admin", "imports");
+  if (blocked) return blocked;
+  const action = typeof body?.action === "string" ? body.action : "";
+  const clientCode = text(body, "clientCode");
+  const holdingId = text(body, "holdingId");
+  if (!clientCode || !holdingId) return fail("Choose a holding.", 400);
+
+  if (action === "delete") {
+    const removed = await deleteHolding(user, clientCode, holdingId);
+    if (!removed) return fail("Holding not found.", 404);
+    return ok({ holdings: await listHoldingRows() });
+  }
+
+  if (action === "edit") {
+    const nextClientCode = text(body, "nextClientCode") || clientCode;
+    const name = text(body, "name");
+    const isin = text(body, "isin").toUpperCase();
+    const allotteeName = text(body, "allotteeName");
+    const pan = text(body, "pan").toUpperCase();
+    const allotmentDate = text(body, "allotmentDate");
+    const quantity = Number(body?.quantity);
+    if (!/^[A-Z0-9]{12}$/.test(isin)) return fail("Enter a 12-character ISIN.", 400);
+    if (!name) return fail("ISIN description is required.", 400);
+    if (!allotteeName) return fail("Name of allottee is required.", 400);
+    if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan)) return fail("Enter a valid PAN.", 400);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(allotmentDate)) return fail("Date of allotment is required.", 400);
+    if (!Number.isFinite(quantity) || quantity <= 0) return fail("Number of units must be greater than zero.", 400);
+    const result = await editHolding(user, {
+      clientCode,
+      holdingId,
+      nextClientCode,
+      identifier: isin,
+      name,
+      quantity,
+      allotmentDate,
+      allotteeName,
+      pan,
+    });
+    if ("error" in result) return fail(result.error, result.error === "Holding not found." || result.error === "Client not found." ? 404 : 409);
+    return ok({ holdings: await listHoldingRows() });
+  }
+
+  return fail("Choose an action.", 400);
+}
+
+export async function ledgerRows() {
+  const { blocked } = await adminOf("admin", "imports");
+  if (blocked) return blocked;
+  return ok({ rows: await listLedgerRows() });
+}
+
+export async function ledgerAction(body) {
+  const { blocked, user } = await adminOf("admin", "imports");
+  if (blocked) return blocked;
+  const action = typeof body?.action === "string" ? body.action : "";
+  const clientCode = text(body, "clientCode");
+  const ledgerId = text(body, "ledgerId");
+  if (!clientCode || !ledgerId) return fail("Choose a ledger row.", 400);
+
+  if (action === "delete") {
+    const removed = await deleteLedger(user, clientCode, ledgerId);
+    if (!removed) return fail("Ledger row not found.", 404);
+    return ok({ rows: await listLedgerRows() });
+  }
+
+  if (action === "edit") {
+    const nextClientCode = text(body, "nextClientCode") || clientCode;
+    const date = text(body, "date");
+    const type = text(body, "type") === "credit" ? "credit" : text(body, "type") === "debit" ? "debit" : "";
+    const particulars = text(body, "particulars");
+    const vchType = text(body, "vchType");
+    const vchNo = text(body, "vchNo");
+    const amount = Number(body?.amount);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail("Date is required.", 400);
+    if (!type) return fail("Choose debit or credit.", 400);
+    if (!particulars) return fail("Particulars are required.", 400);
+    if (!Number.isFinite(amount) || amount <= 0) return fail("Amount must be greater than zero.", 400);
+    const result = await editLedger(user, {
+      clientCode,
+      ledgerId,
+      nextClientCode,
+      date,
+      type,
+      amount,
+      particulars,
+      vchType,
+      vchNo,
+    });
+    if ("error" in result) return fail(result.error, result.error === "Ledger row not found." || result.error === "Client not found." ? 404 : 409);
+    return ok({ rows: await listLedgerRows() });
+  }
+
+  return fail("Choose an action.", 400);
 }
 
 export async function reports() {
@@ -371,11 +502,30 @@ export async function platformAction(body) {
   }
 
   if (action === "security") {
+    const name = typeof body?.name === "string" ? body.name : "";
+    const isin = typeof body?.isin === "string" ? body.isin : "";
+    const symbol = typeof body?.symbol === "string" ? body.symbol : "";
+    const saved = await addSecurity(user, { identifier: isin, name, isin, symbol });
+    if (!saved) return fail("ISIN description and ISIN number are required.", 400);
+    return ok({ security: saved });
+  }
+
+  if (action === "delete-security") {
+    const identifier = typeof body?.identifier === "string" ? body.identifier : "";
+    if (!identifier.trim()) return fail("Choose a security to remove.", 400);
+    const removed = await deleteSecurity(user, identifier);
+    if (!removed) return fail("Security not found.", 404);
+    return ok(removed);
+  }
+
+  if (action === "edit-security") {
     const identifier = typeof body?.identifier === "string" ? body.identifier : "";
     const name = typeof body?.name === "string" ? body.name : "";
     const isin = typeof body?.isin === "string" ? body.isin : "";
-    const saved = await addSecurity(user, { identifier, name, isin });
-    if (!saved) return fail("Identifier and name are required.", 400);
+    const symbol = typeof body?.symbol === "string" ? body.symbol : "";
+    const saved = await updateSecurity(user, { identifier, name, isin, symbol });
+    if (!saved) return fail("Security not found.", 404);
+    if ("error" in saved) return fail(saved.error, 409);
     return ok({ security: saved });
   }
 

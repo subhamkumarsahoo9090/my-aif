@@ -1,13 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, apiFetch } from "@/config/endapi";
 import { parseLedgerStatement, type LedgerStatement } from "@/lib/ledger-statement";
+import DateField from "@/components/ui/DateField";
+import HoldingHistory from "@/components/admin/HoldingHistory";
+import LedgerEntryHistory from "@/components/admin/LedgerEntryHistory";
 import StatusBadge from "@/components/ui/StatusBadge";
 
 type ImportKind = "ledger" | "holdings";
 type PreviewRow = { line: number; ok: boolean; errors: string[]; values: Record<string, string> };
 type ClientOption = { code: string; name: string };
+type SecurityOption = { identifier: string; name: string; isin: string };
 type ImportRecord = {
   id: string;
   type: string;
@@ -20,6 +24,26 @@ type ImportRecord = {
   clientCode?: string;
   clientName?: string;
 };
+
+const emptyHolding = {
+  clientCode: "",
+  allottee: "",
+  pan: "",
+  isin: "",
+  description: "",
+  date: "",
+  units: "",
+  securityId: "",
+};
+
+function csvCell(value: string) {
+  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+}
+
+function isinNumber(security: SecurityOption | undefined) {
+  if (!security) return "";
+  return (security.isin || security.identifier).trim().toUpperCase();
+}
 
 const ledgerSample = `{
   "lvbody": {
@@ -41,12 +65,16 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
   const [csv, setCsv] = useState("");
   const [clientCode, setClientCode] = useState("");
   const [clients, setClients] = useState<ClientOption[]>([]);
+  const [securities, setSecurities] = useState<SecurityOption[]>([]);
   const [rows, setRows] = useState<PreviewRow[] | null>(null);
   const [counts, setCounts] = useState({ valid: 0, failed: 0 });
   const [report, setReport] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [history, setHistory] = useState<ImportRecord[]>([]);
+  const [manual, setManual] = useState(emptyHolding);
+  const [manualError, setManualError] = useState<string | null>(null);
+  const [entryMode, setEntryMode] = useState<"file" | "manual" | "history">("file");
 
   async function loadHistory() {
     const response = await apiFetch(api.admin.imports);
@@ -63,6 +91,12 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
     }
     void loadClients();
     if (type === "ledger") void loadHistory();
+    if (type === "holdings") {
+      void apiFetch(api.admin.imports).then(async (response) => {
+        const data = (await response.json().catch(() => ({}))) as { securities?: SecurityOption[] };
+        if (active && response.ok) setSecurities(data.securities ?? []);
+      });
+    }
     return () => {
       active = false;
     };
@@ -169,10 +203,146 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
     [type, csv],
   );
 
+  async function fillClient(code: string) {
+    setManual((current) => ({ ...current, clientCode: code }));
+    if (!code) return;
+    const response = await apiFetch(api.admin.client(code));
+    const data = (await response.json().catch(() => ({}))) as {
+      portal?: { profile?: { fullName?: string; pan?: string } };
+    };
+    if (!response.ok) return;
+    const profile = data.portal?.profile;
+    setManual((current) =>
+      current.clientCode === code
+        ? { ...current, allottee: profile?.fullName ?? current.allottee, pan: (profile?.pan ?? "").toUpperCase() }
+        : current,
+    );
+  }
+
+  async function saveManual(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setManualError(null);
+    const isin = manual.isin.trim().toUpperCase();
+    const pan = manual.pan.trim().toUpperCase();
+    const description = manual.description.trim();
+    const allottee = manual.allottee.trim();
+    const units = Number(manual.units.replace(/,/g, ""));
+    if (!/^[A-Z0-9]{12}$/.test(isin)) {
+      setManualError("Enter a 12-character ISIN.");
+      return;
+    }
+    if (!description) {
+      setManualError("ISIN description is required.");
+      return;
+    }
+    if (!allottee) {
+      setManualError("Name of allottee is required.");
+      return;
+    }
+    if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(pan)) {
+      setManualError("Enter a valid PAN.");
+      return;
+    }
+    if (!manual.date) {
+      setManualError("Date of allotment is required.");
+      return;
+    }
+    if (!Number.isFinite(units) || units <= 0) {
+      setManualError("Number of units must be greater than zero.");
+      return;
+    }
+    const [year, month, day] = manual.date.split("-");
+    const csvText = [
+      ["ISIN Number", "ISIN Description", "Name of Allottee", "PAN Number", "Date of Allotment", "Number of Units"],
+      [isin, description, allottee, pan, `${day}-${month}-${year}`, String(units)],
+    ]
+      .map((cells) => cells.map(csvCell).join(","))
+      .join("\n");
+    setPending(true);
+    setMessage(null);
+    try {
+      const previewResponse = await apiFetch(api.admin.imports, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step: "preview", type: "holdings", csv: csvText, fileName: "Manual entry" }),
+      });
+      const previewData = (await previewResponse.json().catch(() => ({}))) as {
+        rows?: PreviewRow[];
+        message?: string;
+      };
+      const row = previewData.rows?.[0];
+      if (!previewResponse.ok || !row?.ok) {
+        setManualError(row?.errors.join(" ") || previewData.message || "This holding could not be saved.");
+        return;
+      }
+      const response = await apiFetch(api.admin.imports, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step: "commit", type: "holdings", csv: csvText, fileName: "Manual entry" }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { job?: { valid: number }; message?: string };
+      if (!response.ok || !data.job?.valid) {
+        setManualError(data.message ?? "This holding could not be saved.");
+        return;
+      }
+      setMessage(`Saved the holding for ${allottee}.`);
+      setManual((current) => ({ ...emptyHolding, clientCode: current.clientCode, allottee: current.allottee, pan: current.pan }));
+      setRows(null);
+    } catch {
+      setManualError("This holding could not be saved.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   const isLedger = type === "ledger";
+  const showUpload = isLedger ? entryMode !== "history" : entryMode === "file";
 
   return (
     <div className="flex flex-col gap-4">
+      {isLedger ? (
+        <div role="tablist" aria-label="Ledger" className="inline-flex w-fit flex-wrap rounded-full bg-[#F4F7FB] p-1">
+          {(
+            [
+              ["file", "Upload ledger"],
+              ["history", "History"],
+            ] as const
+          ).map(([mode, label]) => (
+            <button
+              key={mode}
+              type="button"
+              role="tab"
+              aria-selected={entryMode === mode}
+              onClick={() => setEntryMode(mode)}
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${entryMode === mode ? "bg-white text-[#1B3C6C] shadow-[0_4px_12px_rgba(20,50,90,0.08)]" : "text-[#7B8794] hover:text-[#16324F]"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div role="tablist" aria-label="How to add a holding" className="inline-flex w-fit flex-wrap rounded-full bg-[#F4F7FB] p-1">
+          {(
+            [
+              ["file", "Add holding"],
+              ["manual", "Enter a holding"],
+              ["history", "History"],
+            ] as const
+          ).map(([mode, label]) => (
+            <button
+              key={mode}
+              type="button"
+              role="tab"
+              aria-selected={entryMode === mode}
+              onClick={() => setEntryMode(mode)}
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${entryMode === mode ? "bg-white text-[#1B3C6C] shadow-[0_4px_12px_rgba(20,50,90,0.08)]" : "text-[#7B8794] hover:text-[#16324F]"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {showUpload ? (
       <section className={`${cardClass} p-5`}>
         <div className="mb-5 flex items-center gap-3">
           <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-sm font-semibold text-[#1D4E89]">1</span>
@@ -236,7 +406,7 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
           <InfoIcon />
           {isLedger
             ? "Columns used are Date, Particulars, Vch Type, Vch No., Debit, and Credit. Closing balance rows are left off the import."
-            : "Rows are kept when the PAN matches a client. ISIN, description, allotment date, allottee, PAN, and units are saved."}
+            : "Matched rows are saved to the client. Every ISIN description in the file is also saved to Security master."}
         </p>
 
         {statement ? <LedgerSheet statement={statement} /> : null}
@@ -265,10 +435,115 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
           </>
         ) : null}
       </section>
+      ) : null}
+
+      {!isLedger && entryMode === "manual" ? (
+        <form onSubmit={(event) => void saveManual(event)} className={`${cardClass} p-5`}>
+          <div className="mb-5 flex items-center gap-3">
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-sm font-semibold text-[#1D4E89]">1</span>
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[#2E5FA5]"><GridIcon /></span>
+            <div>
+              <h2 className="text-[15px] font-semibold text-[#16324F]">Enter a holding</h2>
+              <p className="text-xs text-[#7B8794]">Type one allotment. It is saved to the client, and the ISIN is added to Security master.</p>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="text-sm md:col-span-2">
+              <span className="mb-1.5 block text-sm font-medium text-[#1B3C6C]">Client<span className="text-[#F97316]"> *</span></span>
+              <span className="relative block">
+                <select
+                  value={manual.clientCode}
+                  onChange={(event) => void fillClient(event.target.value)}
+                  required
+                  className={`${fieldClass} appearance-none pr-10! ${manual.clientCode ? "" : "text-[#9AA3AF]"}`}
+                >
+                  <option value="">Select client</option>
+                  {clients.map((client) => (
+                    <option key={client.code} value={client.code}>{client.name} · {client.code}</option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[#8B95A5]"><ChevronDown /></span>
+              </span>
+            </label>
+            <label className="text-sm">
+              <span className="mb-1.5 block text-sm font-medium text-[#1B3C6C]">Name of allottee<span className="text-[#F97316]"> *</span></span>
+              <input value={manual.allottee} onChange={(event) => setManual((current) => ({ ...current, allottee: event.target.value }))} required className={fieldClass} />
+            </label>
+            <label className="text-sm">
+              <span className="mb-1.5 block text-sm font-medium text-[#1B3C6C]">PAN<span className="text-[#F97316]"> *</span></span>
+              <input
+                value={manual.pan}
+                onChange={(event) => setManual((current) => ({ ...current, pan: event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10) }))}
+                required
+                maxLength={10}
+                className={fieldClass}
+              />
+            </label>
+            <label className="text-sm">
+              <span className="mb-1.5 block text-sm font-medium text-[#1B3C6C]">ISIN description<span className="text-[#F97316]"> *</span></span>
+              <span className="relative block">
+                <select
+                  value={manual.securityId}
+                  required
+                  onChange={(event) => {
+                    const security = securities.find((item) => item.identifier === event.target.value);
+                    setManual((current) => ({
+                      ...current,
+                      securityId: event.target.value,
+                      description: security?.name ?? "",
+                      isin: isinNumber(security),
+                    }));
+                  }}
+                  className={`${fieldClass} appearance-none pr-10! ${manual.securityId ? "" : "text-[#9AA3AF]"}`}
+                >
+                  <option value="">{securities.length === 0 ? "No securities in Security master" : "Select ISIN description"}</option>
+                  {securities.map((security) => (
+                    <option key={security.identifier} value={security.identifier}>{security.name}</option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[#8B95A5]"><ChevronDown /></span>
+              </span>
+            </label>
+            <label className="text-sm">
+              <span className="mb-1.5 block text-sm font-medium text-[#1B3C6C]">ISIN number<span className="text-[#F97316]"> *</span></span>
+              <input
+                value={manual.isin}
+                readOnly
+                required
+                placeholder="Fills from the description"
+                className={`${fieldClass} bg-[#F8FAFC] text-[#16324F] placeholder:text-[#9AA3AF]`}
+              />
+            </label>
+            <label className="text-sm">
+              <span className="mb-1.5 block text-sm font-medium text-[#1B3C6C]">Date of allotment<span className="text-[#F97316]"> *</span></span>
+              <DateField required value={manual.date} onChange={(date) => setManual((current) => ({ ...current, date }))} className={`${fieldClass} pr-10!`} />
+            </label>
+            <label className="text-sm">
+              <span className="mb-1.5 block text-sm font-medium text-[#1B3C6C]">Number of units<span className="text-[#F97316]"> *</span></span>
+              <input
+                value={manual.units}
+                onChange={(event) => setManual((current) => ({ ...current, units: event.target.value.replace(/[^\d.]/g, "").slice(0, 12) }))}
+                required
+                inputMode="decimal"
+                placeholder="0"
+                className={`${fieldClass} placeholder:text-[#9AA3AF]`}
+              />
+            </label>
+          </div>
+          {manualError ? <p className="mt-4 text-sm text-[#B42318]">{manualError}</p> : null}
+          <div className="mt-5 flex justify-end">
+            <button type="submit" className={orangeButtonClass} disabled={pending}>
+              {pending ? "Saving..." : "Save holding"}
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      {!isLedger && entryMode === "history" ? <HoldingHistory clients={clients} securities={securities} /> : null}
 
       {message ? <p className={`${cardClass} px-5 py-3 text-sm text-[#16324F]`}>{message}</p> : null}
 
-      {rows ? (
+      {rows && showUpload ? (
         <section className={cardClass}>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-5 pt-5">
             <div className="flex items-center gap-3">
@@ -311,7 +586,12 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
         </section>
       ) : null}
 
-      {isLedger ? <LedgerHistory jobs={history} /> : null}
+      {isLedger && entryMode === "history" ? (
+        <>
+          <LedgerEntryHistory clients={clients} />
+          <LedgerHistory jobs={history} />
+        </>
+      ) : null}
 
       {report.trim().split("\n").length > 1 ? (
         <section className={`${cardClass} flex flex-wrap items-center justify-between gap-3 p-5`}>
@@ -397,7 +677,7 @@ function LedgerHistory({ jobs }: { jobs: ImportRecord[] }) {
   return (
     <section className={cardClass}>
       <div className="flex items-center gap-3 px-5 pt-5">
-        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-sm font-semibold text-[#1D4E89]">3</span>
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-sm font-semibold text-[#1D4E89]">2</span>
         <div>
           <h2 className="text-[15px] font-semibold text-[#16324F]">Upload history</h2>
           <p className="text-xs text-[#7B8794]">When a ledger file was saved, which client it was for, and who uploaded it.</p>
@@ -469,7 +749,7 @@ function HoldingPreview({ rows }: { rows: PreviewRow[] }) {
       <table className="min-w-full text-left text-sm">
         <thead className="border-y border-[#E6EDF5] text-xs uppercase tracking-wide text-[#7B8794]">
           <tr>
-            {["Sr. No.", "ISIN", "Description", "Allotment date", "Allottee", "PAN", "Units", "Client", "Result"].map((column) => (
+            {["ISIN", "Description", "Allotment date", "Allottee", "PAN", "Units", "Client", "Result"].map((column) => (
               <th key={column} className="whitespace-nowrap px-4 py-3 font-medium">{column}</th>
             ))}
           </tr>
@@ -477,7 +757,6 @@ function HoldingPreview({ rows }: { rows: PreviewRow[] }) {
         <tbody>
           {rows.map((row) => (
             <tr key={row.line} className="border-b border-[#EEF2F6] last:border-0">
-              <td className="px-4 py-3 text-[#16324F]">{row.values.srno}</td>
               <td className="whitespace-nowrap px-4 py-3 font-medium text-[#16324F]">{row.values.isin}</td>
               <td className="min-w-56 px-4 py-3 text-[#3D4C5E]">{row.values.description}</td>
               <td className="whitespace-nowrap px-4 py-3 text-[#3D4C5E]">{sheetDate(row.values.allotmentdate)}</td>

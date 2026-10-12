@@ -152,7 +152,13 @@ function TrendChart({ points }: { points: Point[] }) {
 }
 
 function AllocationChart({ holdings }: { holdings: Slice[] }) {
-  const total = holdings.reduce((sum, item) => sum + item.marketValue, 0) || 1;
+  const funds = new Map<string, number>();
+  holdings.forEach((holding) => {
+    const name = shortName(holding.name).trim();
+    funds.set(name, (funds.get(name) ?? 0) + holding.marketValue);
+  });
+  const slices = [...funds.entries()].map(([name, marketValue]) => ({ name, marketValue }));
+  const total = slices.reduce((sum, item) => sum + item.marketValue, 0) || 1;
   const radius = 42;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
@@ -161,7 +167,7 @@ function AllocationChart({ holdings }: { holdings: Slice[] }) {
     <div className="mt-4 flex flex-col items-center gap-4">
       <svg viewBox="0 0 120 120" className="h-44 w-44 -rotate-90" role="img" aria-label="Asset allocation">
         <circle cx="60" cy="60" r={radius} fill="none" stroke="var(--pm-border)" strokeWidth="14" />
-        {holdings.map((holding, index) => {
+        {slices.map((holding, index) => {
           const length = (holding.marketValue / total) * circumference;
           const dash = `${length} ${circumference - length}`;
           const circle = (
@@ -184,7 +190,7 @@ function AllocationChart({ holdings }: { holdings: Slice[] }) {
         })}
       </svg>
       <ul className="w-full space-y-2 text-sm">
-        {holdings.map((holding, index) => {
+        {slices.map((holding, index) => {
           const share = Math.round((holding.marketValue / total) * 100);
           return (
             <li

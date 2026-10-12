@@ -126,29 +126,79 @@ async function hydratePortal() {
     for (const [identifier, record] of defaultSecurities) {
       await securityCol.updateOne(
         { _id: identifier },
-        { $setOnInsert: { name: record.name, isin: record.isin } },
+        { $setOnInsert: { name: record.name, isin: record.isin, symbol: record.symbol } },
         { upsert: true },
       );
     }
   }
 
   accounts.clear();
+  const cleaned: string[] = [];
   for (const doc of await investors.find().toArray()) {
-    accounts.set(String(doc._id), {
+    const code = String(doc._id);
+    const portal = withProfileCollections(doc.portal as PortalData);
+    if (dropHoldingSrNo(portal)) cleaned.push(code);
+    accounts.set(code, {
       salt: String(doc.salt),
       hash: Buffer.from(String(doc.hash), "base64"),
       version: Number(doc.version),
-      portal: withProfileCollections(doc.portal as PortalData),
+      portal,
     });
   }
+  for (const code of cleaned) await persistInvestor(code);
 
   securities.clear();
-  for (const doc of await securityCol.find().toArray()) {
-    securities.set(String(doc._id), {
+  const securityDocs = await securityCol.find().toArray();
+  const byIsin = new Map<string, typeof securityDocs>();
+  const loose = [];
+  for (const doc of securityDocs) {
+    const isin = String(doc.isin ?? "").trim().toUpperCase();
+    if (/^[A-Z0-9]{12}$/.test(isin)) {
+      const list = byIsin.get(isin) ?? [];
+      list.push(doc);
+      byIsin.set(isin, list);
+    } else {
+      loose.push(doc);
+    }
+  }
+  for (const [isin, list] of byIsin) {
+    const preferred = list.find((doc) => String(doc._id).toUpperCase() === isin) ?? list[0];
+    securities.set(isin, {
+      name: String(preferred.name),
+      isin,
+      symbol: String(preferred.symbol || defaultSecuritySymbol),
+    });
+    for (const doc of list) {
+      if (String(doc._id).toUpperCase() !== isin) await securityCol.deleteOne({ _id: doc._id });
+    }
+    if (String(preferred._id).toUpperCase() !== isin) {
+      await securityCol.deleteOne({ _id: preferred._id });
+      await persistSecurity(isin);
+    }
+  }
+  for (const doc of loose) {
+    const id = String(doc._id).toUpperCase();
+    if (securities.has(id)) {
+      await securityCol.deleteOne({ _id: doc._id });
+      continue;
+    }
+    securities.set(id, {
       name: String(doc.name),
-      isin: String(doc.isin),
+      isin: String(doc.isin ?? ""),
+      symbol: String(doc.symbol || defaultSecuritySymbol),
     });
   }
+}
+
+function dropHoldingSrNo(portal: PortalData) {
+  const holdings = portal.holdings ?? [];
+  if (!holdings.some((holding) => "srNo" in holding)) return false;
+  portal.holdings = portal.holdings.map((holding) => {
+    const next = { ...holding };
+    delete (next as { srNo?: string }).srNo;
+    return next;
+  });
+  return true;
 }
 
 async function persistInvestor(code: string) {
@@ -183,9 +233,19 @@ async function persistSecurity(identifier: string) {
   const db = await getDb();
   await db.collection("securities").replaceOne(
     { _id: identifier },
-    { _id: identifier, name: record.name, isin: record.isin },
+    { _id: identifier, name: record.name, isin: record.isin, symbol: record.symbol },
     { upsert: true },
   );
+}
+
+export async function removeSecurity(identifier: string) {
+  await ready();
+  const key = identifier.trim().toUpperCase();
+  if (!securities.has(key)) return false;
+  securities.delete(key);
+  const db = await getDb();
+  await db.collection("securities").deleteOne({ _id: key });
+  return true;
 }
 
 function accountForIdentifier(identifier: string) {
@@ -232,11 +292,13 @@ export async function updatePassword(clientCode: string, password: string) {
   return true;
 }
 
-type SecurityRecord = { name: string; isin: string };
+type SecurityRecord = { name: string; isin: string; symbol: string };
+
+export const defaultSecuritySymbol = "WEALTH DISCOVERY INVESTMENT TRUST";
 
 const defaultSecurities: Array<[string, SecurityRecord]> = [
-  ["TGF-I-A", { name: "Techculture Growth Fund I - Class A", isin: "INF204K01AIF" }],
-  ["IOF-II-B", { name: "Income Opportunities Fund II - Class B", isin: "INF204K01IOF" }],
+  ["TGF-I-A", { name: "Techculture Growth Fund I - Class A", isin: "INF204K01AIF", symbol: defaultSecuritySymbol }],
+  ["IOF-II-B", { name: "Income Opportunities Fund II - Class B", isin: "INF204K01IOF", symbol: defaultSecuritySymbol }],
 ];
 
 const securities = new Map<string, SecurityRecord>();
@@ -248,19 +310,40 @@ export async function knownSecurity(identifier: string) {
 
 export async function listSecurities() {
   await ready();
-  return [...securities.entries()].map(([identifier, record]) => ({
-    identifier,
-    name: record.name,
-    isin: record.isin,
-  }));
+  const seen = new Set<string>();
+  const rows = [];
+  for (const [identifier, record] of securities) {
+    const isin = (record.isin || identifier).trim().toUpperCase();
+    if (seen.has(isin)) continue;
+    seen.add(isin);
+    rows.push({
+      identifier: /^[A-Z0-9]{12}$/.test(isin) ? isin : identifier,
+      name: record.name,
+      isin,
+      symbol: record.symbol || defaultSecuritySymbol,
+    });
+  }
+  return rows;
 }
 
-export async function saveSecurity(input: { identifier: string; name: string; isin: string }) {
+export async function saveSecurity(input: { identifier: string; name: string; isin: string; symbol?: string }) {
   await ready();
-  const identifier = input.identifier.trim().toUpperCase();
+  const isin = input.isin.trim().toUpperCase();
+  const given = input.identifier.trim().toUpperCase();
+  const identifier = /^[A-Z0-9]{12}$/.test(isin) ? isin : given;
   if (!identifier || !input.name.trim()) return null;
-  const saved = { identifier, name: input.name.trim(), isin: input.isin.trim().toUpperCase() };
-  securities.set(identifier, { name: saved.name, isin: saved.isin });
+  if (given && given !== identifier) {
+    securities.delete(given);
+    const db = await getDb();
+    await db.collection("securities").deleteOne({ _id: given });
+  }
+  const saved = {
+    identifier,
+    name: input.name.trim(),
+    isin: isin || identifier,
+    symbol: input.symbol?.trim() || defaultSecuritySymbol,
+  };
+  securities.set(identifier, { name: saved.name, isin: saved.isin, symbol: saved.symbol });
   await persistSecurity(identifier);
   return saved;
 }
@@ -433,6 +516,9 @@ export async function createClient(input: {
   dateOfBirth: string;
   address: string;
   tradingCode: string;
+  dpClientId?: string;
+  dpName?: string;
+  ckycNo?: string;
   nominees: Nominee[];
   bank: BankAccount;
   status: PortalData["profile"]["status"];
@@ -468,11 +554,20 @@ export async function createClient(input: {
       maritalStatus: input.maritalStatus.trim(),
       annualIncome: input.annualIncome.trim(),
       address: input.address.trim(),
+      dpClientId: input.dpClientId?.trim() ?? "",
+      dpName: input.dpName?.trim() ?? "",
+      ckycNo: input.ckycNo?.trim() ?? "",
       nomineeName: firstNominee?.name ?? "",
       nomineeRelationship: firstNominee?.relationship ?? "",
       nominees: input.nominees.map((nominee) => ({
         name: nominee.name.trim(),
         relationship: nominee.relationship.trim(),
+        dateOfBirth: nominee.dateOfBirth?.trim() ?? "",
+        mobile: nominee.mobile?.trim() ?? "",
+        email: nominee.email?.trim() ?? "",
+        pan: nominee.pan?.trim().toUpperCase() ?? "",
+        address: nominee.address?.trim() ?? "",
+        share: nominee.share?.trim() ?? "",
       })),
       kra: input.kra,
       fatca: false,
@@ -548,6 +643,183 @@ export async function importLedgerRows(
   return true;
 }
 
+function rebalanceLedger(portal: PortalData) {
+  let balance = 0;
+  portal.ledger = portal.ledger.map((row) => {
+    balance = Math.round((balance + (row.type === "credit" ? row.amount : -row.amount)) * 100) / 100;
+    return { ...row, balance };
+  });
+  refreshMetrics(portal);
+}
+
+export async function listLedgerRows() {
+  await ready();
+  const rows = [];
+  for (const account of accounts.values()) {
+    const profile = account.portal.profile;
+    for (const row of account.portal.ledger) {
+      rows.push({
+        id: row.id,
+        clientCode: profile.tradingCode,
+        clientName: profile.fullName,
+        date: row.date,
+        type: row.type,
+        amount: row.amount,
+        balance: row.balance,
+        particulars: row.particulars?.trim() || row.narration,
+        vchType: row.vchType ?? "",
+        vchNo: row.vchNo ?? "",
+      });
+    }
+  }
+  return rows;
+}
+
+export async function updateLedgerRow(input: {
+  clientCode: string;
+  ledgerId: string;
+  nextClientCode: string;
+  date: string;
+  type: "debit" | "credit";
+  amount: number;
+  particulars: string;
+  vchType: string;
+  vchNo: string;
+}) {
+  await ready();
+  const source = accounts.get(input.clientCode);
+  if (!source) return { error: "Client not found." as const };
+  const index = source.portal.ledger.findIndex((row) => row.id === input.ledgerId);
+  if (index < 0) return { error: "Ledger row not found." as const };
+  const target = accounts.get(input.nextClientCode);
+  if (!target) return { error: "Client not found." as const };
+  const current = source.portal.ledger[index];
+  const particulars = input.particulars.trim();
+  const next = {
+    ...current,
+    date: input.date,
+    type: input.type,
+    amount: Math.round(input.amount * 100) / 100,
+    narration: particulars,
+    particulars,
+    vchType: input.vchType.trim(),
+    vchNo: input.vchNo.trim(),
+  };
+  if (target === source) {
+    source.portal.ledger[index] = next;
+    rebalanceLedger(source.portal);
+    await persistInvestor(input.clientCode);
+    return { row: next };
+  }
+  source.portal.ledger.splice(index, 1);
+  rebalanceLedger(source.portal);
+  const id = target.portal.ledger.some((row) => row.id === next.id) ? `led-${Date.now()}` : next.id;
+  const moved = { ...next, id };
+  target.portal.ledger.push(moved);
+  rebalanceLedger(target.portal);
+  await persistInvestor(input.clientCode);
+  await persistInvestor(input.nextClientCode);
+  return { row: moved };
+}
+
+export async function removeLedgerRow(clientCode: string, ledgerId: string) {
+  await ready();
+  const account = accounts.get(clientCode);
+  if (!account) return null;
+  const current = account.portal.ledger.find((row) => row.id === ledgerId);
+  if (!current) return null;
+  account.portal.ledger = account.portal.ledger.filter((row) => row !== current);
+  rebalanceLedger(account.portal);
+  await persistInvestor(clientCode);
+  return current;
+}
+
+function holdingKey(identifier: string, allotmentDate: string, pan: string) {
+  const code = identifier.toUpperCase();
+  const date = allotmentDate.trim();
+  const panKey = pan.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return date ? `${code}-${date}-${panKey}`.toLowerCase() : code.toLowerCase();
+}
+
+export async function listHoldingRows() {
+  await ready();
+  const rows = [];
+  for (const account of accounts.values()) {
+    const profile = account.portal.profile;
+    for (const holding of account.portal.holdings) {
+      rows.push({
+        id: holding.id,
+        clientCode: profile.tradingCode,
+        clientName: profile.fullName,
+        identifier: holding.identifier,
+        name: holding.name,
+        quantity: holding.quantity,
+        allotmentDate: holding.allotmentDate ?? "",
+        allotteeName: holding.allotteeName ?? "",
+        pan: holding.pan ?? "",
+      });
+    }
+  }
+  return rows;
+}
+
+export async function updateHoldingRow(input: {
+  clientCode: string;
+  holdingId: string;
+  nextClientCode: string;
+  identifier: string;
+  name: string;
+  quantity: number;
+  allotmentDate: string;
+  allotteeName: string;
+  pan: string;
+}) {
+  await ready();
+  const source = accounts.get(input.clientCode);
+  if (!source) return { error: "Client not found." as const };
+  const current = source.portal.holdings.find((item) => item.id === input.holdingId);
+  if (!current) return { error: "Holding not found." as const };
+  const target = accounts.get(input.nextClientCode);
+  if (!target) return { error: "Client not found." as const };
+  const identifier = input.identifier.trim().toUpperCase();
+  const allotmentDate = input.allotmentDate.trim();
+  const pan = input.pan.trim().toUpperCase();
+  const id = holdingKey(identifier, allotmentDate, pan);
+  const clash = target.portal.holdings.some((item) => item.id === id && item !== current);
+  if (clash) return { error: "This client already has that allotment." as const };
+  const next = {
+    id,
+    identifier,
+    name: input.name.trim(),
+    quantity: input.quantity,
+    averageCost: current.averageCost,
+    marketValue: current.marketValue,
+    pnl: current.marketValue - input.quantity * current.averageCost,
+    ...(allotmentDate ? { allotmentDate } : {}),
+    ...(input.allotteeName.trim() ? { allotteeName: input.allotteeName.trim() } : {}),
+    ...(pan ? { pan } : {}),
+  };
+  source.portal.holdings = source.portal.holdings.filter((item) => item !== current);
+  refreshMetrics(source.portal);
+  target.portal.holdings.push(next);
+  refreshMetrics(target.portal);
+  await persistInvestor(input.clientCode);
+  if (input.nextClientCode !== input.clientCode) await persistInvestor(input.nextClientCode);
+  return { holding: next };
+}
+
+export async function removeHoldingRow(clientCode: string, holdingId: string) {
+  await ready();
+  const account = accounts.get(clientCode);
+  if (!account) return null;
+  const current = account.portal.holdings.find((item) => item.id === holdingId);
+  if (!current) return null;
+  account.portal.holdings = account.portal.holdings.filter((item) => item !== current);
+  refreshMetrics(account.portal);
+  await persistInvestor(clientCode);
+  return current;
+}
+
 export async function importHoldingRows(
   clientCode: string,
   rows: Array<{
@@ -556,7 +828,6 @@ export async function importHoldingRows(
     quantity: number;
     averageCost: number;
     marketValue: number;
-    srNo?: string;
     allotmentDate?: string;
     allotteeName?: string;
     pan?: string;
@@ -569,9 +840,7 @@ export async function importHoldingRows(
     const identifier = row.identifier.toUpperCase();
     const allotmentDate = row.allotmentDate?.trim() ?? "";
     const pan = row.pan?.trim().toUpperCase() ?? "";
-    const id = allotmentDate
-      ? `${identifier}-${allotmentDate}-${pan.replace(/[^A-Z0-9]/g, "")}`.toLowerCase()
-      : identifier.toLowerCase();
+    const id = holdingKey(identifier, allotmentDate, pan);
     const existing = account.portal.holdings.find((item) => item.id === id);
     const next = {
       identifier,
@@ -580,13 +849,13 @@ export async function importHoldingRows(
       averageCost: row.averageCost,
       marketValue: row.marketValue,
       pnl: row.marketValue - row.quantity * row.averageCost,
-      ...(row.srNo ? { srNo: row.srNo } : {}),
       ...(allotmentDate ? { allotmentDate } : {}),
       ...(row.allotteeName ? { allotteeName: row.allotteeName } : {}),
       ...(pan ? { pan } : {}),
     };
     if (existing) {
       Object.assign(existing, next);
+      delete (existing as { srNo?: string }).srNo;
     } else {
       account.portal.holdings.push({ id, ...next });
     }

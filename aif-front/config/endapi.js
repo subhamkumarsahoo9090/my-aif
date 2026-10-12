@@ -61,6 +61,8 @@ export const api = {
     },
     roles: route("/api/admin/roles"),
     imports: route("/api/admin/imports"),
+    holdings: route("/api/admin/holdings"),
+    ledger: route("/api/admin/ledger"),
     reports: route("/api/admin/reports"),
     reportFile(code, period, statementType, statementId) {
       const params = new URLSearchParams({ period, statementType });

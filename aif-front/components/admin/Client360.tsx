@@ -7,6 +7,7 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import DateField from "@/components/ui/DateField";
 import { accountTypes, annualIncomes, bankList, maritalStatuses, nomineeList, occupations, validateCreateClient } from "@/lib/client-validation";
 import { formatDate, formatInr, formatQuantity } from "@/lib/format";
+import { formatShareCents, nomineeShareTotalCents } from "@/lib/nominee-share";
 import { api, apiFetch } from "@/config/endapi";
 import { usePortalResource } from "@/lib/use-portal-resource";
 import type { BankAccount, Nominee, PortalData } from "@/lib/types";
@@ -52,6 +53,7 @@ export default function Client360({ code }: { code: string }) {
 
   const profile = data?.portal.profile;
   const nomineeDraft = nominees ?? (profile ? nomineeList(profile) : []);
+  const nomineeShareCentsTotal = nomineeShareTotalCents(nomineeDraft);
 
   async function patch(body: Record<string, unknown>) {
     const response = await apiFetch(api.admin.client(code), {
@@ -85,8 +87,11 @@ export default function Client360({ code }: { code: string }) {
       maritalStatus: text("maritalStatus"),
       annualIncome: text("annualIncome"),
       tradingCode: profile.tradingCode,
+      dpClientId: text("dpClientId"),
+      dpName: text("dpName"),
+      ckycNo: text("ckycNo"),
       nominees: nomineeList(profile),
-      bank: { ...primaryBank(profile), dpOrderId: text("dpOrderId") },
+      bank: primaryBank(profile),
       status: text("status") === "inactive" ? "inactive" : "active",
       kra: profile.kra,
     });
@@ -107,6 +112,9 @@ export default function Client360({ code }: { code: string }) {
       maritalStatus: parsed.value.maritalStatus,
       annualIncome: parsed.value.annualIncome,
       status: parsed.value.status,
+      dpClientId: parsed.value.dpClientId,
+      dpName: parsed.value.dpName,
+      ckycNo: parsed.value.ckycNo,
       bank: parsed.value.bank,
     });
   }
@@ -123,7 +131,8 @@ export default function Client360({ code }: { code: string }) {
       bankName: text("bankName"),
       bankCity: text("bankCity"),
       accountType: text("accountType"),
-      upiId: text("upiId"),
+      bankAddress: text("bankAddress"),
+      upiId: primaryBank(profile).upiId,
       micrCode: text("micrCode"),
       dpOrderId: primaryBank(profile).dpOrderId,
       isPrimary: true,
@@ -167,7 +176,7 @@ export default function Client360({ code }: { code: string }) {
       bank: primaryBank(profile),
       status: profile.status,
       kra: profile.kra,
-    });
+    }, { requireNomineeShareTotal: true });
     if (!parsed.ok) {
       setMessage(parsed.message);
       return;
@@ -244,21 +253,16 @@ export default function Client360({ code }: { code: string }) {
           ) : null}
 
           {tab === "Profile" ? (
-            <form key={`${profile.tradingCode}-${profile.fatherName}-${profile.motherName}-${profile.status}`} onSubmit={saveProfile} className={`${cardClass} p-5`}>
+            <form key={`${profile.tradingCode}-${profile.fatherName}-${profile.motherName}-${profile.status}-${profile.ckycNo ?? ""}`} onSubmit={saveProfile} className={`${cardClass} p-5`}>
               <SectionHeading icon={<UserIcon />} title="Personal details" subtitle="Name, contact, PAN, and account status" />
               <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <Field name="fullName" label="Full name" defaultValue={profile.fullName} />
-                <Field name="dpOrderId" label="Trading Code" defaultValue={primaryBank(profile).dpOrderId} />
-                <Field name="fatherName" label="Father's name" defaultValue={profile.fatherName} />
-                <Field name="motherName" label="Mother's name" defaultValue={profile.motherName} />
+                <Field name="tradingCode" label="Trading Code" defaultValue={profile.tradingCode} readOnly />
+                <Field name="dpClientId" label="DP Client ID" defaultValue={profile.dpClientId ?? ""} />
+                <Field name="fullName" label="Full Name" defaultValue={profile.fullName} />
+                <Field name="pan" label="PAN" defaultValue={profile.pan} />
                 <Field name="email" label="Email" defaultValue={profile.email} />
                 <Field name="mobile" label="Mobile" defaultValue={profile.mobile} />
-                <Field name="pan" label="PAN" defaultValue={profile.pan} />
-                <label className="text-sm">
-                  <FieldLabel>Date of birth</FieldLabel>
-                  <DateField name="dateOfBirth" defaultValue={profile.dateOfBirth} className={`${fieldClass} pr-10!`} />
-                </label>
-                <Select name="maritalStatus" label="Marital status" defaultValue={profile.maritalStatus || ""}>
+                <Select name="maritalStatus" label="Marital Status" defaultValue={profile.maritalStatus || ""}>
                   <option value="">Select marital status</option>
                   {profile.maritalStatus && !maritalStatuses.includes(profile.maritalStatus as (typeof maritalStatuses)[number]) ? (
                     <option value={profile.maritalStatus}>{profile.maritalStatus}</option>
@@ -267,15 +271,10 @@ export default function Client360({ code }: { code: string }) {
                     <option key={item} value={item}>{item}</option>
                   ))}
                 </Select>
-                <Select name="annualIncome" label="Annual income" defaultValue={profile.annualIncome || ""}>
-                  <option value="">Select annual income</option>
-                  {profile.annualIncome && !annualIncomes.includes(profile.annualIncome as (typeof annualIncomes)[number]) ? (
-                    <option value={profile.annualIncome}>{profile.annualIncome}</option>
-                  ) : null}
-                  {annualIncomes.map((item) => (
-                    <option key={item} value={item}>{item}</option>
-                  ))}
-                </Select>
+                <label className="text-sm">
+                  <FieldLabel>Date of Birth</FieldLabel>
+                  <DateField name="dateOfBirth" defaultValue={profile.dateOfBirth} className={`${fieldClass} pr-10!`} />
+                </label>
                 <Select name="occupation" label="Occupation" defaultValue={profile.occupation || ""}>
                   <option value="">Select occupation</option>
                   {profile.occupation && !occupations.includes(profile.occupation as (typeof occupations)[number]) ? (
@@ -285,12 +284,27 @@ export default function Client360({ code }: { code: string }) {
                     <option key={item} value={item}>{item}</option>
                   ))}
                 </Select>
+                <Select name="annualIncome" label="Annual Income" defaultValue={profile.annualIncome || ""}>
+                  <option value="">Select annual income</option>
+                  {profile.annualIncome && !annualIncomes.includes(profile.annualIncome as (typeof annualIncomes)[number]) ? (
+                    <option value={profile.annualIncome}>{profile.annualIncome}</option>
+                  ) : null}
+                  {annualIncomes.map((item) => (
+                    <option key={item} value={item}>{item}</option>
+                  ))}
+                </Select>
                 <Select name="status" label="Status" defaultValue={profile.status}>
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </Select>
-                <div className="md:col-span-2 xl:col-span-3">
+                <Field name="fatherName" label="Father's Name" defaultValue={profile.fatherName} />
+                <div className="grid gap-4 sm:grid-cols-2 md:col-span-2 xl:col-span-3">
+                  <Field name="motherName" label="Mother's Name" defaultValue={profile.motherName} />
+                  <Field name="dpName" label="DP Name" defaultValue={profile.dpName ?? ""} />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 md:col-span-2 xl:col-span-3">
                   <Field name="address" label="Address" defaultValue={profile.address} />
+                  <Field name="ckycNo" label="CKYC No." defaultValue={profile.ckycNo ?? ""} inputMode="numeric" maxLength={14} digitsOnly />
                 </div>
               </div>
               <div className="mt-5 flex justify-end">
@@ -305,14 +319,14 @@ export default function Client360({ code }: { code: string }) {
 
           {tab === "Nominee" ? (
             <form onSubmit={saveNominees} className={`${cardClass} p-5`}>
-              <SectionHeading icon={<UsersIcon />} title="Nominees" subtitle="People named on this account" />
+              <SectionHeading icon={<UsersIcon />} title="Nominees" subtitle="Nominee shares must add up to 100%." />
               <div className="mt-5 flex flex-col gap-4">
                 {nomineeDraft.map((nominee, index) => (
                   <div key={index} className="rounded-xl border border-[#EEF2F6] bg-[#F8FAFC] p-4">
                     <p className="mb-3 text-sm font-semibold text-[#16324F]">Nominee {index + 1}</p>
                     <div className="grid gap-4 lg:grid-cols-3">
                       <label className="text-sm">
-                        <FieldLabel>Name</FieldLabel>
+                        <FieldLabel>Nominee Name</FieldLabel>
                         <input
                           value={nominee.name}
                           onChange={(event) => updateNominee(index, { name: event.target.value })}
@@ -321,15 +335,15 @@ export default function Client360({ code }: { code: string }) {
                         />
                       </label>
                       <label className="text-sm">
-                        <FieldLabel>Relationship</FieldLabel>
+                        <FieldLabel>Relationship with Nominee</FieldLabel>
                         <span className="relative block">
                           <select
-                            value={relationships.includes(nominee.relationship as (typeof relationships)[number]) ? nominee.relationship : ""}
+                            value={relationshipChoice(nominee.relationship)}
                             onChange={(event) => updateNominee(index, { relationship: event.target.value })}
                             className={`${fieldClass} appearance-none pr-10! ${nominee.relationship ? "" : "text-[#9AA3AF]"}`}
                           >
                             <option value="">Select relationship</option>
-                            {relationships.filter((relationship) => relationship !== "Other").map((relationship) => (
+                            {relationships.map((relationship) => (
                               <option key={relationship} value={relationship}>
                                 {relationship}
                               </option>
@@ -338,12 +352,70 @@ export default function Client360({ code }: { code: string }) {
                           <Chevron />
                         </span>
                       </label>
+                      {relationshipChoice(nominee.relationship) === "Other" ? (
+                        <label className="text-sm">
+                          <FieldLabel>Relationship</FieldLabel>
+                          <input
+                            value={nominee.relationship === "Other" ? "" : nominee.relationship}
+                            onChange={(event) => updateNominee(index, { relationship: event.target.value || "Other" })}
+                            placeholder="Enter relationship"
+                            className={fieldClass}
+                          />
+                        </label>
+                      ) : null}
                       <label className="text-sm">
-                        <FieldLabel>Or type a relationship</FieldLabel>
+                        <FieldLabel>Date of Birth</FieldLabel>
+                        <DateField
+                          value={nominee.dateOfBirth ?? ""}
+                          onChange={(value) => updateNominee(index, { dateOfBirth: value })}
+                          className={`${fieldClass} pr-10!`}
+                        />
+                      </label>
+                      <label className="text-sm">
+                        <FieldLabel>Mobile Number</FieldLabel>
                         <input
-                          value={nominee.relationship}
-                          onChange={(event) => updateNominee(index, { relationship: event.target.value })}
-                          placeholder="Type a relationship"
+                          value={nominee.mobile ?? ""}
+                          onChange={(event) => updateNominee(index, { mobile: event.target.value.replace(/\D/g, "").slice(0, 10) })}
+                          inputMode="numeric"
+                          placeholder="10-digit mobile number"
+                          className={fieldClass}
+                        />
+                      </label>
+                      <label className="text-sm">
+                        <FieldLabel>Email</FieldLabel>
+                        <input
+                          type="email"
+                          value={nominee.email ?? ""}
+                          onChange={(event) => updateNominee(index, { email: event.target.value })}
+                          placeholder="example@domain.com"
+                          className={fieldClass}
+                        />
+                      </label>
+                      <label className="text-sm">
+                        <FieldLabel>PAN</FieldLabel>
+                        <input
+                          value={nominee.pan ?? ""}
+                          onChange={(event) => updateNominee(index, { pan: event.target.value.toUpperCase().slice(0, 10) })}
+                          placeholder="ABCDE1234F"
+                          className={fieldClass}
+                        />
+                      </label>
+                      <label className="text-sm lg:col-span-2">
+                        <FieldLabel>Address</FieldLabel>
+                        <input
+                          value={nominee.address ?? ""}
+                          onChange={(event) => updateNominee(index, { address: event.target.value })}
+                          placeholder="Enter address"
+                          className={fieldClass}
+                        />
+                      </label>
+                      <label className="text-sm">
+                        <FieldLabel>Nominee Share (%)</FieldLabel>
+                        <input
+                          value={nominee.share ?? ""}
+                          onChange={(event) => updateNominee(index, { share: event.target.value.replace(/[^\d.]/g, "").slice(0, 6) })}
+                          inputMode="decimal"
+                          placeholder="0 to 100"
                           className={fieldClass}
                         />
                       </label>
@@ -356,7 +428,12 @@ export default function Client360({ code }: { code: string }) {
                   <button
                     type="button"
                     className={outlineButtonClass}
-                    onClick={() => setNominees([...nomineeDraft, { name: "", relationship: "" }])}
+                    onClick={() =>
+                      setNominees([
+                        ...nomineeDraft,
+                        { name: "", relationship: "", dateOfBirth: "", mobile: "", email: "", pan: "", address: "", share: "" },
+                      ])
+                    }
                   >
                     Add nominee
                   </button>
@@ -366,6 +443,9 @@ export default function Client360({ code }: { code: string }) {
                     </button>
                   ) : null}
                 </div>
+                <p className={`text-sm font-semibold ${nomineeShareCentsTotal === 10000 ? "text-[#16324F]" : "text-danger"}`}>
+                  Total nominee share: {formatShareCents(nomineeShareCentsTotal)}%
+                </p>
                 <button type="submit" className={orangeButtonClass}>Save nominees</button>
               </div>
             </form>
@@ -414,9 +494,8 @@ export default function Client360({ code }: { code: string }) {
                 <Empty>Nothing recorded yet.</Empty>
               ) : data.portal.holdings.some((row) => row.allotmentDate || row.pan) ? (
                 <Table
-                  columns={["Sr. No.", "ISIN", "Description", "Allotment date", "Allottee", "PAN", "Units"]}
+                  columns={["ISIN", "Description", "Allotment date", "Allottee", "PAN", "Units"]}
                   rows={data.portal.holdings.map((row) => [
-                    row.srNo || "—",
                     row.identifier,
                     row.name,
                     row.allotmentDate ? formatDate(row.allotmentDate) : "—",
@@ -513,19 +592,47 @@ function FieldLabel({ children }: { children: ReactNode }) {
   return <span className="mb-1.5 block text-sm font-medium text-[#1B3C6C]">{children}</span>;
 }
 
+function relationshipChoice(value: string) {
+  if (!value) return "";
+  if (relationships.includes(value as (typeof relationships)[number]) && value !== "Other") return value;
+  return "Other";
+}
+
 function Field({
   name,
   label,
   defaultValue,
+  readOnly = false,
+  inputMode,
+  maxLength,
+  digitsOnly = false,
 }: {
   name: string;
   label: string;
   defaultValue: string;
+  readOnly?: boolean;
+  inputMode?: "numeric";
+  maxLength?: number;
+  digitsOnly?: boolean;
 }) {
   return (
     <label className="text-sm">
       <FieldLabel>{label}</FieldLabel>
-      <input name={name} defaultValue={defaultValue} className={fieldClass} />
+      <input
+        name={name}
+        defaultValue={defaultValue}
+        readOnly={readOnly}
+        inputMode={inputMode}
+        maxLength={maxLength}
+        onChange={
+          digitsOnly
+            ? (event) => {
+                event.target.value = event.target.value.replace(/\D/g, "").slice(0, maxLength);
+              }
+            : undefined
+        }
+        className={`${fieldClass} ${readOnly ? "bg-[#F4F7FB]" : ""}`}
+      />
     </label>
   );
 }
@@ -559,12 +666,13 @@ function BankForm({ bank, onSubmit }: { bank: BankAccount; onSubmit: (event: For
     <form onSubmit={onSubmit} className={`${cardClass} p-5`}>
       <SectionHeading icon={<BankIcon />} title="Bank details" subtitle="Primary account used for this client" />
       <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <Field name="accountHolderName" label="Account holder name" defaultValue={bank.accountHolderName} />
-        <Field name="accountNumber" label="Account number" defaultValue={bank.accountNumber} />
-        <Field name="ifsccode" label="IFSC code" defaultValue={bank.ifsccode} />
-        <Field name="bankName" label="Bank name" defaultValue={bank.bankName} />
-        <Field name="bankCity" label="Bank city" defaultValue={bank.bankCity} />
-        <Select name="accountType" label="Account type" defaultValue={bank.accountType}>
+        <Field name="bankName" label="Bank Name" defaultValue={bank.bankName} />
+        <Field name="accountHolderName" label="Account Holder Name" defaultValue={bank.accountHolderName} />
+        <Field name="accountNumber" label="Account Number" defaultValue={bank.accountNumber} />
+        <Field name="ifsccode" label="IFSC Code" defaultValue={bank.ifsccode} />
+        <Field name="micrCode" label="MICR Code" defaultValue={bank.micrCode} />
+        <Field name="bankCity" label="Bank City" defaultValue={bank.bankCity} />
+        <Select name="accountType" label="Account Type" defaultValue={bank.accountType}>
           <option value="">Select account type</option>
           {accountTypes.map((type) => (
             <option key={type} value={type}>
@@ -572,8 +680,9 @@ function BankForm({ bank, onSubmit }: { bank: BankAccount; onSubmit: (event: For
             </option>
           ))}
         </Select>
-        <Field name="upiId" label="UPI ID" defaultValue={bank.upiId} />
-        <Field name="micrCode" label="MICR code" defaultValue={bank.micrCode} />
+        <div className="md:col-span-2 xl:col-span-3">
+          <Field name="bankAddress" label="Bank Address" defaultValue={bank.bankAddress ?? ""} />
+        </div>
       </div>
       <div className="mt-5 flex justify-end">
         <button type="submit" className={orangeButtonClass}>Save bank</button>

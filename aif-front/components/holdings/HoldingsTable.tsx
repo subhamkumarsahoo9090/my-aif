@@ -56,7 +56,6 @@ export default function HoldingsTable() {
                 <thead className="border-y border-[#E6EDF5] text-xs uppercase tracking-wide text-[#7B8794]">
                   {allotment ? (
                     <tr>
-                      <th scope="col" className="px-5 py-3 font-medium">Sr. No.</th>
                       <th scope="col" className="px-5 py-3 font-medium">ISIN</th>
                       <th scope="col" className="px-5 py-3 font-medium">Description</th>
                       <th scope="col" className="px-5 py-3 font-medium">Allotment date</th>
@@ -82,7 +81,6 @@ export default function HoldingsTable() {
                     if (row.allotmentDate || row.pan) {
                       return (
                         <tr key={row.id} className={rowClass} style={rowStyle}>
-                          <td className="whitespace-nowrap px-5 py-3 text-[#16324F]">{row.srNo || "—"}</td>
                           <td className="whitespace-nowrap px-5 py-3 font-medium text-[#16324F]">{row.identifier}</td>
                           <td className="min-w-56 px-5 py-3 text-[#3D4C5E]">{row.name}</td>
                           <td className="whitespace-nowrap px-5 py-3 text-[#3D4C5E]">{row.allotmentDate ? formatDate(row.allotmentDate) : "—"}</td>

@@ -27,7 +27,6 @@ export type Holding = {
   averageCost: number;
   marketValue: number;
   pnl: number;
-  srNo?: string;
   allotmentDate?: string;
   allotteeName?: string;
   pan?: string;
@@ -63,6 +62,12 @@ export type AdminUser = {
 export type Nominee = {
   name: string;
   relationship: string;
+  dateOfBirth?: string;
+  mobile?: string;
+  email?: string;
+  pan?: string;
+  address?: string;
+  share?: string;
 };
 
 export type BankAccount = {
@@ -74,6 +79,7 @@ export type BankAccount = {
   bankName: string;
   micrCode: string;
   accountType: string;
+  bankAddress?: string;
   isPrimary: boolean;
   dpOrderId: string;
 };
@@ -91,6 +97,9 @@ export type InvestorProfile = {
   maritalStatus: string;
   annualIncome: string;
   address: string;
+  dpClientId?: string;
+  dpName?: string;
+  ckycNo?: string;
   nomineeName: string;
   nomineeRelationship: string;
   nominees: Nominee[];
