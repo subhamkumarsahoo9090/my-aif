@@ -148,9 +148,10 @@ async function hydratePortal() {
   for (const code of cleaned) await persistInvestor(code);
 
   securities.clear();
-  const securityDocs = await securityCol.find().toArray();
-  const byIsin = new Map<string, typeof securityDocs>();
-  const loose = [];
+  type SecurityDoc = { _id?: unknown; name?: unknown; isin?: unknown; symbol?: unknown };
+  const securityDocs = (await securityCol.find().toArray()) as SecurityDoc[];
+  const byIsin = new Map<string, SecurityDoc[]>();
+  const loose: SecurityDoc[] = [];
   for (const doc of securityDocs) {
     const isin = String(doc.isin ?? "").trim().toUpperCase();
     if (/^[A-Z0-9]{12}$/.test(isin)) {
