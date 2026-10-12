@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { LuChartLine, LuChartPie } from "react-icons/lu";
+import { formatInr } from "@/lib/format";
 
-type Point = { date: string; label: string; value: number };
+type Point = { date: string; label: string; value: number; capital: number };
 type Slice = { name: string; marketValue: number };
 
 const chartColors = ["#2E5FA5", "#4482D8", "#CF933C", "#7BA6E4"];
@@ -42,7 +43,7 @@ export default function PortfolioCharts({ trend, holdings }: { trend: Point[]; h
             </span>
             <div>
               <h2 className="text-[15px] font-semibold text-[#16324F]">Portfolio valuation trend</h2>
-              <p className="text-xs text-[#7B8794]">From the first contribution to the current valuation</p>
+              <p className="text-xs text-[#7B8794]">Capital from the ledger, and unit value at the latest NAV</p>
             </div>
           </div>
           <div className="flex rounded-full bg-[#F4F7FB] p-1 text-xs font-semibold">
@@ -62,6 +63,16 @@ export default function PortfolioCharts({ trend, holdings }: { trend: Point[]; h
             </button>
           </div>
         </div>
+        <div className="mt-4 flex flex-wrap items-center gap-4 text-xs font-medium text-[#5C6B7A]">
+          <span className="inline-flex items-center gap-2">
+            <span className="h-0.5 w-6 rounded-full bg-[#2E5FA5]" />
+            Portfolio value
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <span className="h-0.5 w-6 rounded-full bg-[#F97316]" />
+            Invested capital
+          </span>
+        </div>
         <TrendChart points={points} />
       </section>
       <section className="rounded-2xl border border-[#E6EDF5] bg-white p-5 shadow-[0_8px_24px_rgba(20,50,90,0.04)]">
@@ -80,74 +91,119 @@ export default function PortfolioCharts({ trend, holdings }: { trend: Point[]; h
   );
 }
 
+function stepCoords(coords: Array<Point & { x: number; y: number }>, key: "value" | "capital", yFor: (amount: number) => number) {
+  const stepped: Array<{ x: number; y: number }> = [];
+  coords.forEach((point, index) => {
+    const y = yFor(point[key]);
+    if (index === 0) {
+      stepped.push({ x: point.x, y });
+      return;
+    }
+    stepped.push({ x: point.x, y: stepped[stepped.length - 1].y });
+    stepped.push({ x: point.x, y });
+  });
+  return stepped;
+}
+
 function TrendChart({ points }: { points: Point[] }) {
+  const [active, setActive] = useState<number | null>(null);
   const width = 640;
-  const height = 240;
-  const pad = { top: 16, right: 12, bottom: 28, left: 58 };
-  const values = points.map((point) => point.value);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const span = max - min || 1;
-  const ticks = min === max ? [min] : [max, min + (max - min) / 2, min];
+  const height = 268;
+  const pad = { top: 18, right: 16, bottom: 36, left: 64 };
+  const amounts = points.flatMap((point) => [point.value, point.capital]);
+  const max = Math.max(0, ...amounts);
+  const span = max || 1;
+  const ticks = [max, max / 2, 0];
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
+  const yFor = (amount: number) => pad.top + (1 - amount / span) * innerH;
   const coords = points.map((point, index) => {
     const x = pad.left + (points.length === 1 ? innerW / 2 : (index / (points.length - 1)) * innerW);
-    const y = pad.top + (1 - (point.value - min) / span) * innerH;
-    return { ...point, x, y };
+    return { ...point, x, y: yFor(point.value) };
   });
-  const line = coords.map((point) => `${point.x},${point.y}`).join(" ");
+  const valueLine = stepCoords(coords, "value", yFor).map((point) => `${point.x},${point.y}`).join(" ");
+  const capitalLine = stepCoords(coords, "capital", yFor).map((point) => `${point.x},${point.y}`).join(" ");
   const baseline = pad.top + innerH;
-  const area =
-    coords.length > 0
-      ? `${coords[0].x},${baseline} ${line} ${coords[coords.length - 1].x},${baseline}`
-      : "";
+  const area = valueLine ? `${coords[0].x},${baseline} ${valueLine} ${coords[coords.length - 1].x},${baseline}` : "";
+  const current = active == null ? null : coords[active];
+
+  function nearest(clientX: number, bounds: DOMRect) {
+    const x = ((clientX - bounds.left) / bounds.width) * width;
+    let best = 0;
+    coords.forEach((point, index) => {
+      if (Math.abs(point.x - x) < Math.abs(coords[best].x - x)) best = index;
+    });
+    setActive(best);
+  }
 
   return (
-    <svg
-      key={points.map((point) => point.date).join("-")}
-      viewBox={`0 0 ${width} ${height}`}
-      className="mt-3 h-56 w-full"
-      role="img"
-      aria-label="Portfolio valuation trend"
-    >
-      <defs>
-        <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#2E5FA5" stopOpacity="0.22" />
-          <stop offset="100%" stopColor="#2E5FA5" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      {ticks.map((tick, index) => {
-        const y = pad.top + (1 - (tick - min) / span) * innerH;
-        return (
-          <g key={`${index}-${tick}`}>
-            <line x1={pad.left} x2={width - pad.right} y1={y} y2={y} stroke="var(--pm-border)" />
-            <text x={pad.left - 8} y={y + 4} textAnchor="end" fontSize="11" fill="var(--pm-muted)">
-              {formatAxis(tick)}
-            </text>
+    <div className="relative mt-2">
+      <svg
+        key={points.map((point) => point.date).join("-")}
+        viewBox={`0 0 ${width} ${height}`}
+        className="h-64 w-full"
+        role="img"
+        aria-label="Portfolio valuation trend"
+        onMouseLeave={() => setActive(null)}
+        onMouseMove={(event) => nearest(event.clientX, event.currentTarget.getBoundingClientRect())}
+      >
+        <defs>
+          <linearGradient id="trend-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2E5FA5" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#2E5FA5" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {ticks.map((tick, index) => {
+          const y = yFor(tick);
+          return (
+            <g key={`${index}-${tick}`}>
+              <line x1={pad.left} x2={width - pad.right} y1={y} y2={y} stroke="#E6EDF5" />
+              <text x={pad.left - 8} y={y + 4} textAnchor="end" fontSize="11" fill="#7B8794">
+                {formatAxis(tick)}
+              </text>
+            </g>
+          );
+        })}
+        {area ? <polygon points={area} fill="url(#trend-fill)" className="dash-area" /> : null}
+        <polyline fill="none" stroke="#F97316" strokeWidth="2.5" strokeDasharray="7 6" points={capitalLine} strokeLinejoin="round" strokeLinecap="round" />
+        <polyline
+          fill="none"
+          stroke="#2E5FA5"
+          strokeWidth="3"
+          points={valueLine}
+          pathLength={1}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          className="dash-line"
+        />
+        {current ? <line x1={current.x} x2={current.x} y1={pad.top} y2={baseline} stroke="#D5DDE6" /> : null}
+        {coords.map((point, index) => {
+          const previous = coords[index - 1];
+          const showLabel = !previous || point.x - previous.x > 56 || index === coords.length - 1;
+          return (
+          <g key={point.date} className="dash-dot" style={{ animationDelay: `${420 + index * 70}ms` }}>
+            <circle cx={point.x} cy={yFor(point.capital)} r="3.5" fill="#ffffff" stroke="#F97316" strokeWidth="2" />
+            <circle cx={point.x} cy={point.y} r="4.5" fill="#ffffff" stroke="#2E5FA5" strokeWidth="2" />
+            {showLabel ? (
+              <text x={point.x} y={height - 10} textAnchor="middle" fontSize="11" fill="#7B8794">
+                {point.label}
+              </text>
+            ) : null}
           </g>
-        );
-      })}
-      {area ? <polygon points={area} fill="url(#trend-fill)" className="dash-area" /> : null}
-      <polyline
-        fill="none"
-        stroke="#2E5FA5"
-        strokeWidth="3"
-        points={line}
-        pathLength={1}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        className="dash-line"
-      />
-      {coords.map((point, index) => (
-        <g key={`${point.label}-${point.x}`} className="dash-dot" style={{ animationDelay: `${420 + index * 90}ms` }}>
-          <circle cx={point.x} cy={point.y} r="4" fill="#ffffff" stroke="#2E5FA5" strokeWidth="2" />
-          <text x={point.x} y={height - 8} textAnchor="middle" fontSize="11" fill="var(--pm-muted)">
-            {point.label}
-          </text>
-        </g>
-      ))}
-    </svg>
+          );
+        })}
+      </svg>
+      {current ? (
+        <div
+          className="pointer-events-none absolute top-2 rounded-xl border border-[#E6EDF5] bg-white px-3 py-2 text-xs shadow-[0_8px_24px_rgba(20,50,90,0.08)]"
+          style={{ left: `min(${(current.x / width) * 100}%, calc(100% - 11rem))` }}
+        >
+          <p className="font-semibold text-[#16324F]">{current.label}</p>
+          <p className="mt-1 text-[#2E5FA5]">Value {formatInr(current.value)}</p>
+          <p className="text-[#EA6C0C]">Capital {formatInr(current.capital)}</p>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

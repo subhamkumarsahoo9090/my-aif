@@ -30,7 +30,7 @@ type Summary = {
   recentTransactions: LedgerRow[];
   latestStatement: StatementMeta | null;
   holdings: Array<{ name: string; marketValue: number }>;
-  trend: Array<{ date: string; label: string; value: number }>;
+  trend: Array<{ date: string; label: string; value: number; capital: number }>;
 };
 
 const cardClass = "rounded-2xl border border-[#E6EDF5] bg-white shadow-[0_8px_24px_rgba(20,50,90,0.04)]";

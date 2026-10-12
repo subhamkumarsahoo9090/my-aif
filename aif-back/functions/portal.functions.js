@@ -9,25 +9,56 @@ function asRequest(req) {
   return new Request(new URL(req.originalUrl, `http://${host}`));
 }
 
-function valuationTrend(portal) {
-  const contributions = [...portal.ledger]
-    .filter((row) => row.type === "credit" && row.narration.startsWith("Capital contribution"))
-    .sort((left, right) => left.date.localeCompare(right.date));
-  const endValue = portal.metrics.currentValuation;
-  const first = contributions[0];
-  if (!first) return [{ date: "", label: "Now", value: endValue }];
+function monthLabel(iso) {
+  const [year, month, day] = iso.split("-").map(Number);
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  if (!year || !month || !day) return iso;
+  return `${day} ${months[month - 1]} ${String(year).slice(2)}`;
+}
 
-  const start = new Date(`${first.date}T00:00:00`);
-  const lastLedger = [...portal.ledger].sort((left, right) => left.date.localeCompare(right.date)).at(-1);
-  const finish = new Date(`${lastLedger?.date ?? first.date}T00:00:00`);
-  const steps = 6;
-  return Array.from({ length: steps + 1 }, (_, index) => {
-    const progress = index / steps;
-    const time = start.getTime() + (finish.getTime() - start.getTime()) * progress;
-    const date = new Date(time);
-    const value = index === steps ? endValue : Math.round(first.amount + (endValue - first.amount) * progress);
-    const quarter = Math.floor(date.getMonth() / 3) + 1;
-    return { date: date.toISOString().slice(0, 10), label: `Q${quarter} ${date.getFullYear()}`, value };
+function todayIso() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+function isInvestedCredit(row) {
+  return row.type === "credit" && (row.narration.startsWith("Capital contribution") || Boolean(row.particulars || row.vchType));
+}
+
+export function valuationTrend(portal) {
+  const credits = [...portal.ledger]
+    .filter(isInvestedCredit)
+    .sort((left, right) => left.date.localeCompare(right.date));
+  const lots = [...portal.holdings]
+    .filter((row) => row.allotmentDate)
+    .sort((left, right) => left.allotmentDate.localeCompare(right.allotmentDate));
+  const dates = new Set([todayIso()]);
+  credits.forEach((row) => {
+    if (row.date) dates.add(row.date);
+  });
+  lots.forEach((row) => dates.add(row.allotmentDate));
+
+  let capital = 0;
+  let creditIndex = 0;
+  let value = 0;
+  let lotIndex = 0;
+  return [...dates].sort().map((date) => {
+    while (creditIndex < credits.length && credits[creditIndex].date <= date) {
+      capital += credits[creditIndex].amount;
+      creditIndex += 1;
+    }
+    while (lotIndex < lots.length && lots[lotIndex].allotmentDate <= date) {
+      value += lots[lotIndex].marketValue;
+      lotIndex += 1;
+    }
+    return {
+      date,
+      label: monthLabel(date),
+      capital,
+      value: date === todayIso() ? portal.metrics.currentValuation : value,
+    };
   });
 }
 
