@@ -148,7 +148,7 @@ function identity(portal: PortalData, statement: StatementMeta): PdfOp[] {
   const h = 76;
   const columns: Array<{ label: string; value: string; icon: PdfOp[] }> = [
     { label: "INVESTOR", value: clip(profile.fullName, 18), icon: person(0, 0, iconBlue) },
-    { label: "TRADING CODE", value: profile.tradingCode || "-", icon: documentIcon(0, 0, iconBlue, white) },
+    { label: "AIF CODE", value: profile.tradingCode || "-", icon: documentIcon(0, 0, iconBlue, white) },
     { label: "PAN", value: profile.pan || "-", icon: cardIcon(0, 0, iconBlue, white) },
     { label: "PERIOD", value: clip(statement.period, 14), icon: calendar(0, 0, iconBlue, white) },
   ];

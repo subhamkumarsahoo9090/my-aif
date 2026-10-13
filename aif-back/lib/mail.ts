@@ -114,7 +114,7 @@ export async function sendAccountCreatedMail(input: {
     <p style="margin:0 0 18px;color:#16324F;">A new investor account is ready on the AIF Client Portal.</p>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F8FAFC;border:1px solid #E6EDF5;border-radius:12px;">
       <tr><td style="padding:14px 16px;font-size:13px;color:#7B8794;">Investor</td><td style="padding:14px 16px;font-size:14px;font-weight:600;color:#16324F;">${name}</td></tr>
-      <tr><td style="padding:0 16px 14px;font-size:13px;color:#7B8794;">Trading code</td><td style="padding:0 16px 14px;font-size:14px;font-weight:600;color:#16324F;">${code}</td></tr>
+      <tr><td style="padding:0 16px 14px;font-size:13px;color:#7B8794;">AIF code</td><td style="padding:0 16px 14px;font-size:14px;font-weight:600;color:#16324F;">${code}</td></tr>
       <tr><td style="padding:0 16px 14px;font-size:13px;color:#7B8794;">Email</td><td style="padding:0 16px 14px;font-size:14px;font-weight:600;color:#16324F;">${email}</td></tr>
       <tr><td style="padding:0 16px 16px;font-size:13px;color:#7B8794;">Password</td><td style="padding:0 16px 16px;font-size:14px;font-weight:600;letter-spacing:0.04em;color:#1B3C6C;">${password}</td></tr>
     </table>
@@ -124,7 +124,7 @@ export async function sendAccountCreatedMail(input: {
     "Account created successfully",
     "",
     `Investor: ${input.investorName}`,
-    `Trading code: ${input.tradingCode}`,
+    `AIF code: ${input.tradingCode}`,
     `Email: ${input.email}`,
     `Password: ${input.password}`,
     "",

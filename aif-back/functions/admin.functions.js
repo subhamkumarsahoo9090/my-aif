@@ -136,10 +136,14 @@ export async function access() {
   return ok(await accessFor(user.role));
 }
 
-export async function overview() {
+export async function overview(query) {
   const { blocked } = await adminOf();
   if (blocked) return blocked;
-  return ok(await adminOverview());
+  const raw = query?.client;
+  const code = Array.isArray(raw) ? String(raw[0] ?? "") : typeof raw === "string" ? raw.trim() : "";
+  const result = await adminOverview(code);
+  if (!result) return fail("Client not found.", 404);
+  return ok(result);
 }
 
 export async function command() {

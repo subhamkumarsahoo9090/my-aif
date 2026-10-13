@@ -67,7 +67,7 @@ export const interviewTopics: InterviewTopic[] = [
     canDo: [
       "Save documents, update one record, and read a page of history.",
       "Keep the same data after the API process restarts.",
-      "Index a field such as client code or NAV date when the lists grow.",
+      "Index a field such as AIF code or NAV date when the lists grow.",
     ],
   },
   {
@@ -77,7 +77,7 @@ export const interviewTopics: InterviewTopic[] = [
     here: [
       "Investor login opens the portal session. Staff login opens the admin session.",
       "The cookie is not readable by page scripts.",
-      "An investor can load only their own client code.",
+      "An investor can load only their own AIF code.",
       "Password reset uses a second short-lived cookie after the code is checked.",
     ],
     canDo: [

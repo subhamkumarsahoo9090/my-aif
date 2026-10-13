@@ -145,7 +145,7 @@ export default function LedgerTable() {
               </span>
               <div>
                 <h2 className="text-[15px] font-semibold text-[#16324F]">Filter the ledger</h2>
-                <p className="text-xs text-[#7B8794]">Trading code {data.clientCode}</p>
+                <p className="text-xs text-[#7B8794]">AIF code {data.clientCode}</p>
               </div>
             </div>
             <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
@@ -199,7 +199,7 @@ export default function LedgerTable() {
                 <p className="m-5 rounded-xl border border-dashed border-[#E3E8EF] px-3 py-6 text-center text-sm text-[#7B8794]">
                   {start || end
                     ? "No transactions in this range. Choose a different start or end date, or clear the filter to see the full ledger."
-                    : "No ledger has been saved for this trading code yet."}
+                    : "No ledger has been saved for this AIF code yet."}
                 </p>
               ) : (
                 <div className="mt-4 overflow-x-auto">

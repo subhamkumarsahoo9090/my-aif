@@ -263,10 +263,10 @@ export function validateCreateClient(input: {
 
   if (!bank.isPrimary) errors["bank.isPrimary"] = "Mark this bank account as primary.";
 
-  if (dpOrderId && !dpOrderPattern.test(dpOrderId)) errors["bank.dpOrderId"] = "Trading code can use letters, numbers, and hyphens only.";
+  if (dpOrderId && !dpOrderPattern.test(dpOrderId)) errors["bank.dpOrderId"] = "DP client ID can use letters, numbers, and hyphens only.";
 
-  if (!tradingCode) errors.tradingCode = "Enter the trading code.";
-  else if (!dpOrderPattern.test(tradingCode)) errors.tradingCode = "Trading code can use letters, numbers, and hyphens only.";
+  if (!tradingCode) errors.tradingCode = "Enter the AIF code.";
+  else if (!dpOrderPattern.test(tradingCode)) errors.tradingCode = "AIF code can use letters, numbers, and hyphens only.";
 
   const status: ClientStatus = input.status === "inactive" ? "inactive" : "active";
   if (input.status !== "active" && input.status !== "inactive") errors.status = "Choose a status.";

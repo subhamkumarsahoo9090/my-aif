@@ -212,7 +212,7 @@ export default function ClientDashboard() {
                   </span>
                   <div>
                     <h2 className="text-[15px] font-semibold text-[#16324F]">KRA status</h2>
-                    <p className="text-xs text-[#7B8794]">Trading code {data.clientCode}</p>
+                    <p className="text-xs text-[#7B8794]">AIF code {data.clientCode}</p>
                   </div>
                 </div>
                 <div className="mt-4">

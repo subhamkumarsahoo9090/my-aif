@@ -21,4 +21,4 @@ The page has two parts.
 
 **Delivery history.** Lists each generate and schedule action: client, statement type, period, mode, frequency, status, and date. A generated row has **Download PDF**. A scheduled row does not, because no file was created. A new row is also written to the audit trail.
 
-Both actions need a client, a statement type, and a period. If the trading code is not on file, the request is rejected.
+Both actions need a client, a statement type, and a period. If the AIF code is not on file, the request is rejected.

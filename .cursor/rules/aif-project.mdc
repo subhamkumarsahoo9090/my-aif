@@ -27,7 +27,7 @@ This repo is the **Wealth Discovery AIF Client Portal**. Implement what the user
 - Commit or push unless they asked.
 - Print Mongo URI / passwords.
 - Restart `aif-back` for frontend-only work. API is not always on file watch; restart it only after `aif-back` changes.
-- Merge “Trading code” (profile) with “Trading Code” / `dpOrderId` (bank). They are different fields.
+- Merge “AIF Code” (profile `tradingCode`) with bank DP Client ID (`dpOrderId`). They are different fields.
 - Build schedule-delivery as real cron/email unless they ask. It is a recorded request only.
 
 PowerShell has no `&&`. Use separate commands. `$PID` is read-only.

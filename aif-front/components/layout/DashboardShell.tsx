@@ -26,7 +26,7 @@ const pages: Record<string, { title: string; description: string; tone: string }
   },
   "/holdings": {
     title: "Holdings",
-    description: "Scheme units currently allotted to your trading code, with cost and market value.",
+    description: "Scheme units currently allotted to your AIF code, with cost and market value.",
     tone: "holdings",
   },
   "/statements": {

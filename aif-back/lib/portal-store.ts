@@ -533,7 +533,7 @@ export async function createClient(input: {
     return { error: "An investor with this email already exists." as const };
   }
   if (accounts.has(code)) {
-    return { error: "An investor with this trading code already exists." as const };
+    return { error: "An investor with this AIF code already exists." as const };
   }
   const firstNominee = input.nominees[0];
   const portal = buildPortal({

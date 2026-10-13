@@ -27,7 +27,7 @@ export default function TermsPage() {
           title: "Who may sign in",
           paragraphs: [
             "Use of the portal is limited to investors who have been given an account, and to fund staff authorised to administer those accounts.",
-            "You may use only the account issued to you. Do not try to open another investor’s trading code, and do not share your sign-in with anyone else.",
+            "You may use only the account issued to you. Do not try to open another investor’s AIF code, and do not share your sign-in with anyone else.",
           ],
         },
         {

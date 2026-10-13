@@ -24,6 +24,7 @@ import {
 } from "./portal-store.js";
 import type { AdminRole, AdminUser, ClientStatus, PortalData } from "./types.js";
 import { investorMatchScore, parseLedgerStatement } from "./ledger-statement.js";
+import { valuationTrend } from "../functions/portal.functions.js";
 import { sendAccountCreatedMail } from "./mail.js";
 
 export type { AdminRole, AdminUser };
@@ -433,22 +434,69 @@ export async function noteStaffLogin(account: StaffAccount) {
   });
 }
 
-export async function adminOverview() {
+export async function adminOverview(clientCode = "") {
   await ensureAdmin();
-  const portals = await listPortals();
+  const all = await listPortals();
+  const clients = all
+    .map((item) => ({ code: item.profile.tradingCode, name: item.profile.fullName }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+  const code = clientCode.trim();
+  const portals = code ? all.filter((item) => item.profile.tradingCode === code) : all;
+  if (code && portals.length === 0) return null;
+  const focus = code ? clients.find((item) => item.code === code) ?? null : null;
   const active = portals.filter((item) => item.profile.status === "active").length;
   const pendingKra = portals.filter((item) => item.profile.status === "active" && !item.profile.kra).length;
   const incomplete = portals.filter((item) => isProfileIncomplete(item.profile)).length;
   const aum = portals.reduce((sum, item) => sum + item.metrics.totalPortfolioValue, 0);
+  const metrics = portals.reduce(
+    (sum, item) => ({
+      totalPortfolioValue: sum.totalPortfolioValue + item.metrics.totalPortfolioValue,
+      investedCapital: sum.investedCapital + item.metrics.investedCapital,
+      currentValuation: sum.currentValuation + item.metrics.currentValuation,
+      realizedPnl: sum.realizedPnl + item.metrics.realizedPnl,
+      unrealizedPnl: sum.unrealizedPnl + item.metrics.unrealizedPnl,
+    }),
+    { totalPortfolioValue: 0, investedCapital: 0, currentValuation: 0, realizedPnl: 0, unrealizedPnl: 0 },
+  );
   return {
     active,
     inactive: portals.length - active,
     pendingKra,
     incomplete,
     aum,
+    metrics,
+    holdings: portals.flatMap((item) =>
+      item.holdings.map((holding) => ({ name: holding.name, marketValue: holding.marketValue })),
+    ),
+    trend: fundTrend(portals),
+    nav: navSeries(),
+    clients,
+    focus,
     imports: imports.slice(0, 5),
     runs: runs.slice(0, 5),
   };
+}
+
+function fundTrend(portals: PortalData[]) {
+  const series = portals.map((portal) => valuationTrend(portal));
+  const dates = [...new Set(series.flatMap((points) => points.map((point) => point.date)))].sort();
+  return dates.map((date) => {
+    let capital = 0;
+    let value = 0;
+    let label = date;
+    for (const points of series) {
+      let latest: (typeof points)[number] | null = null;
+      for (const point of points) {
+        if (point.date > date) break;
+        latest = point;
+      }
+      if (!latest) continue;
+      capital += latest.capital;
+      value += latest.value;
+      if (latest.date === date) label = latest.label;
+    }
+    return { date, label, capital, value };
+  });
 }
 
 export async function clientRows() {
@@ -699,7 +747,7 @@ export async function previewImport(type: ImportKind, csv: string, clientCode = 
     const errors: string[] = [];
     const values = row.values;
     const code = cell(values, "clientcode", "client_code", "code");
-    if (!(await getPortal(code))) errors.push("Unknown client code.");
+    if (!(await getPortal(code))) errors.push("Unknown AIF code.");
     const identifier = cell(values, "identifier", "security").toUpperCase();
     if (!(await knownSecurity(identifier))) errors.push("Security is not in the fund list.");
     const quantity = Number(cell(values, "quantity"));
@@ -1151,7 +1199,25 @@ export async function listNav(page = 1) {
     total,
     pages,
     latest: sorted[0] ?? null,
+    series: navSeries(),
   };
+}
+
+function navSeries() {
+  const byDate = new Map<string, number>();
+  for (const entry of sortedNav()) {
+    if (!byDate.has(entry.date)) byDate.set(entry.date, entry.nav);
+  }
+  return [...byDate.entries()]
+    .sort((left, right) => left[0].localeCompare(right[0]))
+    .map(([date, nav]) => ({ date, label: navLabel(date), nav }));
+}
+
+function navLabel(iso: string) {
+  const [year, month, day] = iso.split("-").map(Number);
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  if (!year || !month || !day) return iso;
+  return `${day} ${months[month - 1]} ${String(year).slice(2)}`;
 }
 
 export async function saveNav(actor: AdminUser, input: { date: string; nav: number }) {

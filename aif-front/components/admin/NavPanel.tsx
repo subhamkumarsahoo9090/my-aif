@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import LoadError from "@/components/ui/LoadError";
 import Skeleton from "@/components/ui/Skeleton";
 import DateField from "@/components/ui/DateField";
+import NavChart from "@/components/admin/NavChart";
 import { api, apiFetch } from "@/config/endapi";
 import { formatDate, formatNav } from "@/lib/format";
 import { usePortalResource } from "@/lib/use-portal-resource";
@@ -23,6 +24,7 @@ type NavPage = {
   total: number;
   pages: number;
   latest: NavEntry | null;
+  series: Array<{ date: string; label: string; nav: number }>;
 };
 
 function todayIso() {
@@ -66,41 +68,45 @@ export default function NavPanel() {
 
   return (
     <div className="flex flex-col gap-4">
-      <form onSubmit={onSubmit} className={`${cardClass} p-5`}>
-        <div className="mb-5 flex items-center gap-3">
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-sm font-semibold text-[#1D4E89]">1</span>
-          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[#2E5FA5]">
-            <ChartIcon />
-          </span>
-          <div>
-            <h2 className="text-[15px] font-semibold text-[#16324F]">Add NAV</h2>
-            <p className="text-xs text-[#7B8794]">Holdings use the latest saved NAV for market value.</p>
+      <div className="grid items-stretch gap-4 lg:grid-cols-2">
+        <form onSubmit={onSubmit} className={`${cardClass} flex h-full flex-col p-5`}>
+          <div className="mb-5 flex items-center gap-3">
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-sm font-semibold text-[#1D4E89]">1</span>
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center text-[#2E5FA5]">
+              <ChartIcon />
+            </span>
+            <div>
+              <h2 className="text-[15px] font-semibold text-[#16324F]">Add NAV</h2>
+              <p className="text-xs text-[#7B8794]">Holdings use the latest saved NAV for market value.</p>
+            </div>
           </div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="text-sm">
-            <span className="mb-1.5 block text-sm font-medium text-[#1B3C6C]">
-              NAV date<span className="text-[#F97316]"> *</span>
-            </span>
-            <DateField name="date" required max={todayIso()} value={date} onChange={setDate} className={`${fieldClass} pr-10!`} />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1.5 block text-sm font-medium text-[#1B3C6C]">
-              NAV<span className="text-[#F97316]"> *</span>
-            </span>
-            <input name="nav" type="number" min="0.0001" step="0.0001" required placeholder="1140.25" className={fieldClass} />
-          </label>
-        </div>
-        <div className="mt-5 flex justify-end">
-          <button type="submit" className={orangeButtonClass} disabled={pending}>
-            {pending ? "Saving..." : "Add NAV"}
-          </button>
-        </div>
-      </form>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="text-sm">
+              <span className="mb-1.5 block text-sm font-medium text-[#1B3C6C]">
+                NAV date<span className="text-[#F97316]"> *</span>
+              </span>
+              <DateField name="date" required max={todayIso()} value={date} onChange={setDate} className={`${fieldClass} pr-10!`} />
+            </label>
+            <label className="text-sm">
+              <span className="mb-1.5 block text-sm font-medium text-[#1B3C6C]">
+                NAV<span className="text-[#F97316]"> *</span>
+              </span>
+              <input name="nav" type="number" min="0.0001" step="0.0001" required placeholder="1140.25" className={fieldClass} />
+            </label>
+          </div>
+          <div className="mt-5 flex justify-end lg:mt-auto lg:pt-5">
+            <button type="submit" className={orangeButtonClass} disabled={pending}>
+              {pending ? "Saving..." : "Add NAV"}
+            </button>
+          </div>
+        </form>
+
+        {status === "loading" ? <Skeleton className="h-64" /> : null}
+        {status === "error" ? <LoadError onRetry={reload} /> : null}
+        {status === "ready" && data ? <NavChart points={data.series ?? []} /> : null}
+      </div>
 
       {message ? <p className={`${cardClass} px-5 py-3 text-sm text-[#16324F]`}>{message}</p> : null}
-      {status === "loading" ? <Skeleton className="h-64" /> : null}
-      {status === "error" ? <LoadError onRetry={reload} /> : null}
 
       {status === "ready" && data ? (
         <section className={cardClass}>

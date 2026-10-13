@@ -234,7 +234,7 @@ export default function Client360({ code }: { code: string }) {
             </span>
             <div className="min-w-0 flex-1">
               <h2 className="truncate text-lg font-semibold text-[#16324F]">{profile.fullName}</h2>
-              <p className="text-sm text-[#7B8794]">Trading code {profile.tradingCode}</p>
+              <p className="text-sm text-[#7B8794]">AIF code {profile.tradingCode}</p>
               <p className="mt-1 truncate text-sm text-[#3D4C5E]">
                 {profile.email} · {profile.mobile} · {profile.pan}
               </p>
@@ -281,7 +281,7 @@ export default function Client360({ code }: { code: string }) {
             <form key={`${profile.tradingCode}-${profile.fatherName}-${profile.motherName}-${profile.status}-${profile.ckycNo ?? ""}`} onSubmit={saveProfile} className={`${cardClass} p-5`}>
               <SectionHeading icon={<UserIcon />} title="Personal details" subtitle="Name, contact, PAN, and account status" />
               <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <Field name="tradingCode" label="Trading Code" defaultValue={profile.tradingCode} readOnly />
+                <Field name="tradingCode" label="AIF Code" defaultValue={profile.tradingCode} readOnly />
                 <Field name="dpClientId" label="DP Client ID" defaultValue={profile.dpClientId ?? ""} />
                 <Field name="fullName" label="Full Name" defaultValue={profile.fullName} />
                 <Field name="pan" label="PAN" defaultValue={profile.pan} />

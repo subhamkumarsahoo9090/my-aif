@@ -4,7 +4,7 @@ import { controller, respond } from "./respond.js";
 export const login = controller((req) => admin.login(req.body ?? {}));
 export const session = controller(() => admin.session());
 export const access = controller(() => admin.access());
-export const overview = controller(() => admin.overview());
+export const overview = controller((req) => admin.overview(req.query ?? {}));
 export const command = controller(() => admin.command());
 export const clients = controller(() => admin.clients());
 export const createClient = controller((req) => admin.createClient(req.body));

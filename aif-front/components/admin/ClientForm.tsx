@@ -216,7 +216,7 @@ export default function ClientForm() {
       <section className={cardClass}>
         <SectionHeading index="1" icon={<UserIcon />} title="Personal Details" subtitle="Basic information about the client" />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <TextField required icon={<TrendIcon />} label="Trading Code" value={tradingCode} error={errors.tradingCode} onChange={setTradingCode} placeholder="Enter trading code" />
+          <TextField required icon={<TrendIcon />} label="AIF Code" value={tradingCode} error={errors.tradingCode} onChange={setTradingCode} placeholder="Enter AIF code" />
           <TextField label="DP Client ID" value={dpClientId} error={errors.dpClientId} onChange={setDpClientId} placeholder="Enter DP client ID" />
           <TextField required icon={<UserIcon />} label="Full Name" value={fullName} error={errors.fullName} onChange={setFullName} autoComplete="name" placeholder="Enter full name" />
           <TextField

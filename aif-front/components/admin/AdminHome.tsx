@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import AdminDashboard from "@/components/admin/AdminDashboard";
-import SuperCommand from "@/components/admin/SuperCommand";
 import { api, apiFetch } from "@/config/endapi";
 import type { AdminUser } from "@/lib/types";
 
@@ -25,6 +24,5 @@ export default function AdminHome() {
   }, []);
 
   if (!user) return <div className="min-h-40" />;
-  if (user.role === "superadmin") return <SuperCommand />;
   return <AdminDashboard />;
 }

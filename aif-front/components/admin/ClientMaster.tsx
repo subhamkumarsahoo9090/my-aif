@@ -92,7 +92,7 @@ export default function ClientMaster() {
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-[#E6EDF5] text-xs uppercase tracking-wide text-[#7B8794]">
               <tr>
-                <th className="px-4 py-3 font-medium"><HeaderLabel icon={<HashIcon />}>Code</HeaderLabel></th>
+                <th className="px-4 py-3 font-medium"><HeaderLabel icon={<HashIcon />}>AIF Code</HeaderLabel></th>
                 <th className="px-4 py-3 font-medium"><HeaderLabel icon={<UserIcon />}>Name</HeaderLabel></th>
                 <th className="px-4 py-3 font-medium"><HeaderLabel icon={<PhoneIcon />}>Mobile</HeaderLabel></th>
                 <th className="px-4 py-3 font-medium"><HeaderLabel icon={<MailIcon />}>Email</HeaderLabel></th>

@@ -28,7 +28,7 @@ export default function PrivacyPage() {
           paragraphs: ["When the fund creates your account, the portal can hold the details needed to identify you and show your investment:"],
           points: [
             "Name, date of birth, father’s and mother’s names, occupation, marital status, annual income, address, email, and mobile number.",
-            "PAN, trading code, and KRA and FATCA status.",
+            "PAN, AIF code, and KRA and FATCA status.",
             "Nominee names and relationships.",
             "Bank account details used for the investment, including account number, IFSC, and account type.",
             "Ledger entries, allotted units, scheme or ISIN details, and the statements issued to you.",
@@ -49,7 +49,7 @@ export default function PrivacyPage() {
           id: "access",
           title: "Who can see it",
           paragraphs: [
-            "After you sign in, the portal shows the account tied to your trading code. It does not offer a way to open another investor’s ledger, holdings, or statements.",
+            "After you sign in, the portal shows the account tied to your AIF code. It does not offer a way to open another investor’s ledger, holdings, or statements.",
             "Fund administrators can open client records according to their role. A super admin can also manage staff, roles, schedules, and platform settings. Staff do not receive a copy of your password.",
           ],
         },
@@ -73,7 +73,7 @@ export default function PrivacyPage() {
           id: "corrections",
           title: "Corrections and questions",
           paragraphs: [
-            "Profile, bank, and nominee details are maintained by the fund. If something on your screen is wrong, contact the office with your trading code and the correction you need. Do not send a password or a full card number by email.",
+            "Profile, bank, and nominee details are maintained by the fund. If something on your screen is wrong, contact the office with your AIF code and the correction you need. Do not send a password or a full card number by email.",
             "We do not sell investor information, and this portal does not carry third-party advertising.",
           ],
         },

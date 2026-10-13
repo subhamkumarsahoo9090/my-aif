@@ -269,7 +269,7 @@ function ProfileView({ profile }: { profile: InvestorProfile }) {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <StatTile
-          label="Trading code"
+          label="AIF code"
           value={shown(profile.tradingCode)}
           copy
           delay="80ms"
@@ -312,7 +312,7 @@ function ProfileView({ profile }: { profile: InvestorProfile }) {
         <Panel title="Personal information" delay="340ms" chip="bg-[var(--pm-nav-dashboard-bg)] text-[var(--pm-nav-dashboard-color)]" icon={<LuUser className="h-4 w-4" aria-hidden="true" />}>
           <dl>
             <InfoRow label="Full name" value={shown(profile.fullName)} />
-            <InfoRow label="Trading code" value={shown(profile.tradingCode)} copy />
+            <InfoRow label="AIF code" value={shown(profile.tradingCode)} copy />
             <InfoRow label="DP Client ID" value={shown(primary?.dpOrderId)} />
             <InfoRow label="PAN number" value={shown(profile.pan)} copy />
             <InfoRow label="Date of birth" value={profile.dateOfBirth ? formatDob(profile.dateOfBirth) : "—"} />

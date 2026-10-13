@@ -35,7 +35,7 @@ Investor chrome (menu, logout): `DashboardShell.tsx`, `SideNav.tsx`. Admin chrom
 ## 3. Change only what they asked
 
 - Keep front and back separate.
-- Keep Trading code vs bank Trading Code (`dpOrderId`) as two fields.
+- Keep AIF code (profile `tradingCode`) vs bank DP Client ID (`dpOrderId`) as two fields.
 - Do not commit unless asked.
 - Frontend-only: do not restart the API.
 

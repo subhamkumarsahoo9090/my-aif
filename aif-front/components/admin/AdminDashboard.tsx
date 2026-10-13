@@ -1,74 +1,129 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { LuChartColumn, LuTrendingUp, LuWallet } from "react-icons/lu";
+import NavChart from "@/components/admin/NavChart";
+import PortfolioCharts from "@/components/dashboard/PortfolioCharts";
 import LoadError from "@/components/ui/LoadError";
+import PnlValue from "@/components/ui/PnlValue";
 import Skeleton from "@/components/ui/Skeleton";
-import StatusBadge from "@/components/ui/StatusBadge";
-import { formatDate, formatInr } from "@/lib/format";
+import { formatInr } from "@/lib/format";
 import { api } from "@/config/endapi";
 import { usePortalResource } from "@/lib/use-portal-resource";
 
 type Overview = {
-  active: number;
-  inactive: number;
-  pendingKra: number;
-  incomplete: number;
-  aum: number;
-  imports: Array<{ id: string; type: string; fileName: string; status: string; valid: number; failed: number; at: string }>;
-  runs: Array<{ id: string; clientName: string; statementType: string; period: string; status: string; at: string }>;
+  metrics: {
+    totalPortfolioValue: number;
+    investedCapital: number;
+    currentValuation: number;
+    realizedPnl: number;
+    unrealizedPnl: number;
+  };
+  holdings: Array<{ name: string; marketValue: number }>;
+  trend: Array<{ date: string; label: string; value: number; capital: number }>;
+  nav: Array<{ date: string; label: string; nav: number }>;
+  clients: Array<{ code: string; name: string }>;
+  focus: { code: string; name: string } | null;
 };
 
+const cardClass = "rounded-2xl border border-[#E6EDF5] bg-white shadow-[0_8px_24px_rgba(20,50,90,0.04)]";
+const fieldClass =
+  "w-full rounded-xl border border-[#E3E8EF] bg-white py-2.5 pl-3 text-sm text-[#16324F] outline-none focus:border-[#F97316]";
+
 export default function AdminDashboard() {
-  const { data, status, reload } = usePortalResource<Overview>(api.admin.overview);
+  const [client, setClient] = useState("");
+  const overviewUrl = client ? `${api.admin.overview}?client=${encodeURIComponent(client)}` : api.admin.overview;
+  const { data, status, reload } = usePortalResource<Overview>(overviewUrl);
 
   return (
     <div className="w-full">
+      <div className={`${cardClass} mb-4 flex flex-wrap items-center justify-between gap-3 p-4`}>
+        <div>
+          <p className="text-sm font-semibold text-[#16324F]">{data?.focus ? data.focus.name : "All investors"}</p>
+          <p className="text-xs text-[#7B8794]">
+            {data?.focus ? `AIF code ${data.focus.code}` : "Combined totals for every investor"}
+          </p>
+        </div>
+        <label className="relative block w-full sm:w-72">
+          <span className="sr-only">Investor</span>
+          <select
+            value={client}
+            onChange={(event) => setClient(event.target.value)}
+            className={`${fieldClass} appearance-none pr-10!`}
+          >
+            <option value="">All investors</option>
+            {(data?.clients ?? []).map((item) => (
+              <option key={item.code} value={item.code}>
+                {item.name} · {item.code}
+              </option>
+            ))}
+          </select>
+          <Chevron />
+        </label>
+      </div>
       {status === "loading" ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }, (_, index) => (
-            <Skeleton key={index} className="h-28" />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-busy="true">
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton key={index} className="h-32" />
           ))}
+          <Skeleton className="h-72 sm:col-span-2 xl:col-span-3" />
+          <Skeleton className="h-72" />
         </div>
       ) : null}
       {status === "error" ? <LoadError onRetry={reload} /> : null}
       {status === "ready" && data ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <Metric label="Active clients" value={String(data.active)} note={`${data.inactive} inactive`} icon={<UserIcon />} />
-            <Metric label="Pending KRA" value={String(data.pendingKra)} note="Unverified KYC records" icon={<ShieldIcon />} accent />
-            <Metric label="Incomplete profiles" value={String(data.incomplete)} note="Missing mandatory fields" icon={<AlertIcon />} />
-            <Metric label="Portfolio summary" value={formatInr(data.aum)} note="Aggregate AUM" icon={<TrendIcon />} />
-            <Metric label="Recent imports" value={String(data.imports.length)} note="Latest upload jobs" icon={<DownloadIcon />} />
-            <Metric label="Statement runs" value={String(data.runs.length)} note="Dispatch history" icon={<DocIcon />} />
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <Metric
+              label="Total portfolio value"
+              amount={data.metrics.totalPortfolioValue}
+              note={data.focus ? "This investor’s current valuation" : "Current aggregate asset valuation"}
+              chip="bg-[var(--pm-nav-dashboard-bg)] text-[var(--pm-nav-dashboard-color)]"
+              icon={<LuTrendingUp className="h-4 w-4" aria-hidden="true" />}
+              delay="0ms"
+            />
+            <Metric
+              label="Invested capital"
+              amount={data.metrics.investedCapital}
+              note="Historical principal deployed"
+              chip="bg-[var(--pm-nav-ledger-bg)] text-[var(--pm-nav-ledger-color)]"
+              icon={<LuWallet className="h-4 w-4" aria-hidden="true" />}
+              delay="80ms"
+            />
+            <Metric
+              label="Current valuation"
+              amount={data.metrics.currentValuation}
+              note="Latest calculated market value"
+              chip="bg-[var(--pm-nav-holdings-bg)] text-[var(--pm-nav-holdings-color)]"
+              icon={<LuChartColumn className="h-4 w-4" aria-hidden="true" />}
+              delay="160ms"
+            />
+            <article className="dash-rise h-full" style={{ animationDelay: "240ms" }}>
+              <div className={`${cardClass} dash-card h-full p-5`}>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#7B8794]">Realized / unrealized P&L</p>
+                  <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--pm-nav-statements-bg)] text-[var(--pm-nav-statements-color)]">
+                    <LuChartColumn className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                </div>
+                <div className="mt-4 space-y-3">
+                  <div>
+                    <p className="text-xs text-[#7B8794]">Realized</p>
+                    <CountedPnl value={data.metrics.realizedPnl} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-[#7B8794]">Unrealized</p>
+                    <CountedPnl value={data.metrics.unrealizedPnl} />
+                  </div>
+                </div>
+              </div>
+            </article>
           </div>
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            <section className={`${cardClass} p-5`}>
-              <PanelTitle icon={<DownloadIcon />}>Recent imports</PanelTitle>
-              {data.imports.length === 0 ? <Empty>No imports yet.</Empty> : null}
-              <ul className="space-y-2 text-sm">
-                {data.imports.map((job) => (
-                  <li key={job.id} className="flex items-start justify-between gap-3 rounded-xl border border-[#EEF2F6] bg-[#F8FAFC] px-3 py-2.5">
-                    <div>
-                      <p className="font-medium text-[#16324F]">{job.fileName}</p>
-                      <p className="text-[#7B8794]">{job.type} · {formatDate(job.at.slice(0, 10))} · {job.valid} valid, {job.failed} failed</p>
-                    </div>
-                    <StatusBadge tone={job.status === "committed" ? "success" : "danger"}>{job.status}</StatusBadge>
-                  </li>
-                ))}
-              </ul>
-            </section>
-            <section className={`${cardClass} p-5`}>
-              <PanelTitle icon={<DocIcon />}>Statement runs</PanelTitle>
-              {data.runs.length === 0 ? <Empty>No statement runs yet.</Empty> : null}
-              <ul className="space-y-2 text-sm">
-                {data.runs.map((run) => (
-                  <li key={run.id} className="rounded-xl border border-[#EEF2F6] bg-[#F8FAFC] px-3 py-2.5">
-                    <p className="font-medium text-[#16324F]">{run.clientName}</p>
-                    <p className="text-[#7B8794]">{run.statementType} · {run.period} · {run.status}</p>
-                  </li>
-                ))}
-              </ul>
-            </section>
+          <div className="dash-rise" style={{ animationDelay: "280ms" }} key={client || "all"}>
+            <PortfolioCharts trend={data.trend} holdings={data.holdings} />
+          </div>
+          <div className="dash-rise mt-4" style={{ animationDelay: "360ms" }}>
+            <NavChart points={data.nav ?? []} />
           </div>
         </>
       ) : null}
@@ -76,107 +131,69 @@ export default function AdminDashboard() {
   );
 }
 
-const cardClass = "rounded-2xl border border-[#E6EDF5] bg-white shadow-[0_8px_24px_rgba(20,50,90,0.05)]";
-
-function Metric({
-  label,
-  value,
-  note,
-  icon,
-  accent = false,
-}: {
-  label: string;
-  value: string;
-  note: string;
-  icon: ReactNode;
-  accent?: boolean;
-}) {
+function Chevron() {
   return (
-    <article className={`${cardClass} p-5`}>
-      <div className="flex items-start justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-[#7B8794]">{label}</p>
-        <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${accent ? "bg-[#FFF1E6] text-[#F97316]" : "bg-[#E7F0FF] text-[#2E5FA5]"}`}>
-          {icon}
-        </span>
-      </div>
-      <p className="mt-3 text-2xl font-semibold tracking-tight text-[#16324F]">{value}</p>
-      <p className="mt-1 text-sm text-[#7B8794]">{note}</p>
-    </article>
-  );
-}
-
-function PanelTitle({ icon, children }: { icon: ReactNode; children: string }) {
-  return (
-    <div className="mb-4 flex items-center gap-3">
-      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#E7F0FF] text-[#2E5FA5]">{icon}</span>
-      <h2 className="text-[15px] font-semibold text-[#16324F]">{children}</h2>
-    </div>
-  );
-}
-
-function Empty({ children }: { children: ReactNode }) {
-  return <p className="rounded-xl border border-dashed border-[#E3E8EF] px-3 py-6 text-center text-sm text-[#7B8794]">{children}</p>;
-}
-
-function Icon({ children }: { children: ReactNode }) {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      {children}
+    <svg viewBox="0 0 24 24" className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-[#8B95A5]" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function UserIcon() {
-  return (
-    <Icon>
-      <circle cx="12" cy="8" r="3" />
-      <path d="M5.5 19.2c1.3-2.7 3.5-4 6.5-4s5.2 1.3 6.5 4" strokeLinecap="round" />
-    </Icon>
-  );
+function useCountUp(target: number) {
+  const [value, setValue] = useState(0);
+
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setValue(target);
+      return;
+    }
+    let frame = 0;
+    const start = performance.now();
+    const duration = 900;
+    function tick(now: number) {
+      const progress = Math.min(1, (now - start) / duration);
+      const eased = 1 - (1 - progress) ** 3;
+      setValue(target * eased);
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    }
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [target]);
+
+  return value;
 }
 
-function ShieldIcon() {
-  return (
-    <Icon>
-      <path d="M12 3.5 19 6.2v5.3c0 4-2.8 6.8-7 8.5-4.2-1.7-7-4.5-7-8.5V6.2L12 3.5Z" strokeLinejoin="round" />
-    </Icon>
-  );
+function CountedPnl({ value }: { value: number }) {
+  return <PnlValue value={useCountUp(value)} />;
 }
 
-function AlertIcon() {
+function Metric({
+  label,
+  amount,
+  note,
+  icon,
+  chip,
+  delay,
+}: {
+  label: string;
+  amount: number;
+  note: string;
+  icon: ReactNode;
+  chip: string;
+  delay: string;
+}) {
+  const shown = useCountUp(amount);
   return (
-    <Icon>
-      <path d="M12 4 3.5 19h17L12 4Z" strokeLinejoin="round" />
-      <path d="M12 10v4" strokeLinecap="round" />
-      <path d="M12 16.5h.01" strokeLinecap="round" />
-    </Icon>
-  );
-}
-
-function TrendIcon() {
-  return (
-    <Icon>
-      <path d="M4 16l5-5 3 3 7-7" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M14 7h5v5" strokeLinecap="round" strokeLinejoin="round" />
-    </Icon>
-  );
-}
-
-function DownloadIcon() {
-  return (
-    <Icon>
-      <path d="M12 4v10" strokeLinecap="round" />
-      <path d="m8 10 4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M5 19h14" strokeLinecap="round" />
-    </Icon>
-  );
-}
-
-function DocIcon() {
-  return (
-    <Icon>
-      <path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" />
-      <path d="M14 3v5h5M8 13h8M8 17h5" strokeLinecap="round" />
-    </Icon>
+    <article className="dash-rise h-full" style={{ animationDelay: delay }}>
+      <div className={`${cardClass} dash-card h-full p-5`}>
+        <div className="flex items-start justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[#7B8794]">{label}</p>
+          <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${chip}`}>{icon}</span>
+        </div>
+        <p className="mt-3 text-2xl font-semibold tracking-tight text-[#16324F] tabular-nums">{formatInr(shown)}</p>
+        <p className="mt-1 text-sm text-[#7B8794]">{note}</p>
+      </div>
+    </article>
   );
 }

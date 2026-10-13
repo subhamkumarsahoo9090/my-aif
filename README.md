@@ -19,7 +19,7 @@ The form asks for:
 
 | Field | What it does |
 | --- | --- |
-| Client | Trading code of one investor. The list comes from the client master. |
+| Client | AIF code of one investor. The list comes from the client master. |
 | Statement type | Capital account, Holdings, or Portfolio. This chooses the PDF body and the file name. |
 | Period | Free text, for example `Q2 FY 2026-27`. It is printed on the statement. |
 | Schedule | Daily, weekly, or monthly. Used only by **Schedule delivery**. |
@@ -27,7 +27,7 @@ The form asks for:
 **Generate PDF record** (`mode: manual`):
 
 1. The browser sends `POST /api/admin/reports` with the client, type, period, and mode.
-2. The API checks that the trading code exists. If it does not, the request is rejected.
+2. The API checks that the AIF code exists. If it does not, the request is rejected.
 3. A statement row is saved on that investor: id, period, issue date, and a file name such as `TC24018-Capital-account.pdf`.
 4. A delivery-history row is saved with status `generated`, and an audit entry is written (`Statement generated`).
 5. The browser then downloads the PDF. Capital account lists the ledger, Holdings lists the units, and Portfolio lists the valuation totals. The file is built from the client’s current records when it is opened, so it is not stored as a separate file.

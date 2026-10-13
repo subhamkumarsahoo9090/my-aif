@@ -208,6 +208,7 @@ function TrendChart({ points }: { points: Point[] }) {
 }
 
 function AllocationChart({ holdings }: { holdings: Slice[] }) {
+  const [active, setActive] = useState<number | null>(null);
   const funds = new Map<string, number>();
   holdings.forEach((holding) => {
     const name = shortName(holding.name).trim();
@@ -218,10 +219,18 @@ function AllocationChart({ holdings }: { holdings: Slice[] }) {
   const radius = 42;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
+  const current = active == null ? null : slices[active];
+  const currentShare = current ? Math.round((current.marketValue / total) * 100) : 0;
 
   return (
     <div className="mt-4 flex flex-col items-center gap-4">
-      <svg viewBox="0 0 120 120" className="h-44 w-44 -rotate-90" role="img" aria-label="Asset allocation">
+      <svg
+        viewBox="0 0 120 120"
+        className="h-44 w-44 -rotate-90"
+        role="img"
+        aria-label="Asset allocation"
+        onMouseLeave={() => setActive(null)}
+      >
         <circle cx="60" cy="60" r={radius} fill="none" stroke="var(--pm-border)" strokeWidth="14" />
         {slices.map((holding, index) => {
           const length = (holding.marketValue / total) * circumference;
@@ -234,25 +243,41 @@ function AllocationChart({ holdings }: { holdings: Slice[] }) {
               r={radius}
               fill="none"
               stroke={chartColors[index % chartColors.length]}
-              strokeWidth="14"
+              strokeWidth={active === index ? 18 : 14}
               strokeDasharray={dash}
               strokeDashoffset={-offset}
-              className="dash-seg"
-              style={{ ["--ring" as string]: circumference, animationDelay: `${180 + index * 120}ms` }}
-            />
+              className="dash-seg cursor-pointer"
+              style={{
+                ["--ring" as string]: circumference,
+                animationDelay: `${180 + index * 120}ms`,
+                opacity: active == null || active === index ? 1 : 0.45,
+              }}
+              onMouseEnter={() => setActive(index)}
+            >
+              <title>{`${holding.name}: ${formatInr(holding.marketValue)}`}</title>
+            </circle>
           );
           offset += length;
           return circle;
         })}
       </svg>
+      {current ? (
+        <div className="w-full rounded-xl border border-[#E6EDF5] bg-white px-3 py-2 text-xs shadow-[0_8px_24px_rgba(20,50,90,0.08)]">
+          <p className="font-semibold text-[#16324F]">{current.name}</p>
+          <p className="mt-1 text-[#2E5FA5]">Value {formatInr(current.marketValue)}</p>
+          <p className="text-[#5C6B7A]">{currentShare}% of the portfolio</p>
+        </div>
+      ) : null}
       <ul className="w-full space-y-2 text-sm">
         {slices.map((holding, index) => {
           const share = Math.round((holding.marketValue / total) * 100);
           return (
             <li
               key={`${holding.name}-${index}`}
-              className="dash-rise flex items-center justify-between gap-3"
-              style={{ animationDelay: `${260 + index * 80}ms` }}
+              className="dash-rise flex cursor-pointer items-center justify-between gap-3 rounded-lg px-1 py-0.5"
+              style={{ animationDelay: `${260 + index * 80}ms`, background: active === index ? "#F4F7FB" : undefined }}
+              onMouseEnter={() => setActive(index)}
+              onMouseLeave={() => setActive(null)}
             >
               <span className="flex min-w-0 items-center gap-2">
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: chartColors[index % chartColors.length] }} />

@@ -92,7 +92,7 @@ export default function ScheduleManager() {
             </Select>
           </Field>
           <Field label="Target">
-            <input name="target" placeholder="all-active or a client code" className={fieldClass} />
+            <input name="target" placeholder="all-active or a AIF code" className={fieldClass} />
           </Field>
           <Field label="Retries">
             <input name="retries" type="number" min={0} defaultValue={2} className={fieldClass} />
