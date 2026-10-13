@@ -28,7 +28,7 @@ export default function PageChrome({
   const showSidebar = page ? page.showSidebar : false;
   const showFooter = page ? page.showFooter : true;
   const homeBackground = pathname === "/";
-  const loginBackground = pathname === "/login";
+  const loginBackground = pathname === "/login" || pathname === "/forgot-password";
 
   const frame = (
     <>

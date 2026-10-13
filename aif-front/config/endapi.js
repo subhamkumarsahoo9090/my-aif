@@ -5,7 +5,7 @@ const configuredOrigin = process.env.NEXT_PUBLIC_API_ORIGIN?.trim().replace(/\/$
 export const apiOrigin = configuredOrigin ;
 
 function route(path) {
-  return `${apiOrigin}${path}`;
+  return path;
 }
 
 const TOKEN_KEY = "aif_session_token";
@@ -54,6 +54,9 @@ export const api = {
     clients: route("/api/admin/clients"),
     client(code) {
       return route(`/api/admin/clients/${code}`);
+    },
+    clientPassword(code) {
+      return route(`/api/admin/clients/${code}/password`);
     },
     staff: route("/api/admin/staff"),
     staffMember(id) {

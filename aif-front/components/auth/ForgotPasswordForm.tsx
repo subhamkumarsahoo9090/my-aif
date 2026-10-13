@@ -20,7 +20,6 @@ export default function ForgotPasswordForm() {
   const { user, ready } = useApp();
   const router = useRouter();
   const [step, setStep] = useState<Step>("identify");
-  const [demoCode, setDemoCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [doneMessage, setDoneMessage] = useState("");
@@ -39,7 +38,6 @@ export default function ForgotPasswordForm() {
     });
     const data = (await response.json().catch(() => ({}))) as {
       message?: string;
-      demoCode?: string;
     };
     return { ok: response.ok, data };
   }
@@ -53,11 +51,10 @@ export default function ForgotPasswordForm() {
       identifier: String(form.get("identifier") ?? ""),
     });
     setPending(false);
-    if (!result.ok || !result.data.demoCode) {
+    if (!result.ok) {
       setError(result.data.message ?? "The reset request could not be sent.");
       return;
     }
-    setDemoCode(result.data.demoCode);
     setStep("otp");
   }
 
@@ -118,13 +115,9 @@ export default function ForgotPasswordForm() {
   if (step === "otp") {
     return (
       <form onSubmit={onVerify} className="mt-6 flex flex-col gap-4">
-        <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-3 text-sm text-blue-900">
-          <p className="font-medium">Demo verification code</p>
-          <p className="mt-1">
-            SMS and email are not connected, so the code is shown here:{" "}
-            <span className="font-semibold tracking-widest">{demoCode}</span>
-          </p>
-        </div>
+        <p className="rounded-xl border border-[#E6EDF5] bg-[#F8FAFC] px-3 py-3 text-sm text-[#16324F]">
+          A 6-digit code was sent to the email on this account. It expires in 10 minutes.
+        </p>
         <div>
           <label className={labelClass} htmlFor="reset-code">
             Verification code

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api, apiFetch } from "@/config/endapi";
 import { accountTypes, annualIncomes, maritalStatuses, maxAdultDob, occupations, validateCreateClient } from "@/lib/client-validation";
@@ -64,6 +65,7 @@ export default function ClientForm() {
   const [bank, setBank] = useState<BankAccount>(emptyBank());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [createdCode, setCreatedCode] = useState<string | null>(null);
   const [branchNote, setBranchNote] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const adultDob = maxAdultDob();
@@ -99,6 +101,7 @@ export default function ClientForm() {
     setBank(emptyBank());
     setErrors({});
     setFormError(null);
+    setCreatedCode(null);
     setBranchNote(null);
   }
 
@@ -182,16 +185,27 @@ export default function ClientForm() {
     }
 
     setErrors({});
+    setCreatedCode(null);
     setPending(true);
     const response = await apiFetch(api.admin.clients, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(parsed.value),
     });
-    const data = (await response.json().catch(() => ({}))) as { code?: string; message?: string };
+    const data = (await response.json().catch(() => ({}))) as {
+      code?: string;
+      message?: string;
+      mailed?: boolean;
+      mailMessage?: string;
+    };
     setPending(false);
     if (!response.ok || !data.code) {
       setFormError(data.message ?? "The client could not be created.");
+      return;
+    }
+    if (data.mailed === false) {
+      setFormError(data.mailMessage ?? "The client was created, but the founder email could not be sent.");
+      setCreatedCode(data.code);
       return;
     }
     router.push(`/admin/clients/${data.code}`);
@@ -451,10 +465,15 @@ export default function ClientForm() {
           </label>
         </div>
         {formError ? <p className={`mt-4 ${errorClass}`}>{formError}</p> : null}
+        {createdCode ? (
+          <Link href={`/admin/clients/${createdCode}`} className="mt-3 inline-flex text-sm font-medium text-[#F97316] hover:underline">
+            Open the client record
+          </Link>
+        ) : null}
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
           <p className="flex items-center gap-2 text-xs text-[#7B8794]">
             <InfoIcon />
-            The investor can sign in with password 123456.
+            The investor can sign in with password 123456. The founder is emailed that email and password.
           </p>
           <div className="flex items-center gap-3">
             <button type="button" onClick={resetForm} className="rounded-full border border-[#D5DDE6] bg-white px-5 py-2.5 text-sm font-medium text-[#1B3C6C] hover:bg-[#F8FAFC]">

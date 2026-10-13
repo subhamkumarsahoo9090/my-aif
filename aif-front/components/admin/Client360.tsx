@@ -8,6 +8,7 @@ import DateField from "@/components/ui/DateField";
 import { accountTypes, annualIncomes, bankList, maritalStatuses, nomineeList, occupations, validateCreateClient } from "@/lib/client-validation";
 import { formatDate, formatInr, formatQuantity } from "@/lib/format";
 import { formatShareCents, nomineeShareTotalCents } from "@/lib/nominee-share";
+import { passwordError } from "@/lib/password";
 import { api, apiFetch } from "@/config/endapi";
 import { usePortalResource } from "@/lib/use-portal-resource";
 import type { BankAccount, Nominee, PortalData } from "@/lib/types";
@@ -67,6 +68,30 @@ export default function Client360({ code }: { code: string }) {
       setNominees(null);
       reload();
     }
+  }
+
+  async function resetPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const password = String(form.get("password") ?? "");
+    const confirm = String(form.get("confirm") ?? "");
+    const localError = passwordError(password);
+    if (localError) {
+      setMessage(localError);
+      return;
+    }
+    if (password !== confirm) {
+      setMessage("The passwords do not match.");
+      return;
+    }
+    const response = await apiFetch(api.admin.clientPassword(code), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+    const payload = (await response.json().catch(() => ({}))) as { message?: string };
+    setMessage(response.ok ? "Password updated." : payload.message ?? "The password could not be updated.");
+    if (response.ok) event.currentTarget.reset();
   }
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
@@ -243,7 +268,7 @@ export default function Client360({ code }: { code: string }) {
           {message ? (
             <p
               className={`rounded-2xl border px-4 py-3 text-sm ${
-                message === "Client record updated."
+                message === "Client record updated." || message === "Password updated."
                   ? "border-[#D7F0E3] bg-[#F3FBF6] text-[#157A45]"
                   : "border-[#F6D5D5] bg-[#FFF6F6] text-danger"
               }`}
@@ -309,6 +334,26 @@ export default function Client360({ code }: { code: string }) {
               </div>
               <div className="mt-5 flex justify-end">
                 <button type="submit" className={orangeButtonClass}>Save profile</button>
+              </div>
+            </form>
+          ) : null}
+
+          {tab === "Profile" ? (
+            <form onSubmit={resetPassword} className={`${cardClass} p-5`}>
+              <SectionHeading icon={<KeyIcon />} title="Reset password" subtitle="Set a new sign-in password for this investor." />
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <label className="text-sm">
+                  <FieldLabel>New password</FieldLabel>
+                  <input name="password" type="password" autoComplete="new-password" required className={fieldClass} />
+                </label>
+                <label className="text-sm">
+                  <FieldLabel>Confirm password</FieldLabel>
+                  <input name="confirm" type="password" autoComplete="new-password" required className={fieldClass} />
+                </label>
+              </div>
+              <p className="mt-3 text-xs text-[#7B8794]">At least 8 characters, with a letter and a number. The investor’s current sign-in stops working.</p>
+              <div className="mt-5 flex justify-end">
+                <button type="submit" className={orangeButtonClass}>Reset password</button>
               </div>
             </form>
           ) : null}
@@ -779,6 +824,15 @@ function Icon({ children }: { children: ReactNode }) {
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
       {children}
     </svg>
+  );
+}
+
+function KeyIcon() {
+  return (
+    <Icon>
+      <circle cx="8" cy="15" r="3.2" />
+      <path d="M10.6 13.2 19 5.2M16.2 7.6l2.2 2.2M14 9.6l2 2" strokeLinecap="round" strokeLinejoin="round" />
+    </Icon>
   );
 }
 

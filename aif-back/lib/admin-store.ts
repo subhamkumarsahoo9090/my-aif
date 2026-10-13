@@ -24,6 +24,7 @@ import {
 } from "./portal-store.js";
 import type { AdminRole, AdminUser, ClientStatus, PortalData } from "./types.js";
 import { investorMatchScore, parseLedgerStatement } from "./ledger-statement.js";
+import { sendAccountCreatedMail } from "./mail.js";
 
 export type { AdminRole, AdminUser };
 
@@ -511,7 +512,8 @@ export async function saveClient(
     kra: boolean;
   },
 ) {
-  const created = await createClient({ ...input, password: "123456" });
+  const password = "123456";
+  const created = await createClient({ ...input, password });
   if ("error" in created) return created;
   await recordAudit({
     actor,
@@ -519,7 +521,17 @@ export async function saveClient(
     detail: created.portal.profile.fullName,
     clientCode: created.portal.profile.tradingCode,
   });
-  return { code: created.portal.profile.tradingCode };
+  const mailed = await sendAccountCreatedMail({
+    investorName: created.portal.profile.fullName,
+    tradingCode: created.portal.profile.tradingCode,
+    email: created.portal.profile.email,
+    password,
+  });
+  return {
+    code: created.portal.profile.tradingCode,
+    mailed: mailed.ok,
+    mailMessage: mailed.ok ? undefined : mailed.error,
+  };
 }
 
 export async function editClient(

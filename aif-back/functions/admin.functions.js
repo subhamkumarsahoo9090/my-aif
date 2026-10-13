@@ -18,6 +18,7 @@ import {
   listAudit,
   listStaff,
   noteStaffLogin,
+  recordAudit,
   overrideLedger,
   platformState,
   previewImport,
@@ -38,7 +39,8 @@ import {
 import { authorizeAdmin } from "../lib/admin-guard.js";
 import { openAdminSession, readAdminSession } from "../lib/session.js";
 import { readCreateClientBody } from "../lib/client-validation.js";
-import { getPortal, listHoldingRows, listLedgerRows, listSecurities } from "../lib/portal-store.js";
+import { passwordError } from "../lib/password.js";
+import { getPortal, listHoldingRows, listLedgerRows, listSecurities, updatePassword } from "../lib/portal-store.js";
 import { statementDownloadName } from "../lib/pdf.js";
 import { renderStatement } from "../lib/statement-pdf.js";
 import { denied, fail, ok } from "./result.js";
@@ -210,6 +212,26 @@ export async function updateClient(code, body) {
   });
   if (!portal) return fail("Client not found.", 404);
   return ok({ portal });
+}
+
+export async function resetClientPassword(code, body) {
+  const { blocked, user } = await adminOf("admin", "clients");
+  if (blocked) return blocked;
+  const password = typeof body?.password === "string" ? body.password : "";
+  const message = passwordError(password);
+  if (message) return fail(message, 400);
+  const portal = await getPortal(code);
+  if (!portal) return fail("Client not found.", 404);
+  if (!(await updatePassword(code, password))) return fail("Client not found.", 404);
+  await recordAudit({
+    actor: user.name,
+    action: "Password reset",
+    detail: `Sign-in password reset for ${portal.profile.fullName}.`,
+    clientCode: code,
+    targetEntity: "investor",
+    entityId: code,
+  });
+  return ok({ message: "Password updated. The investor can sign in with the new password." });
 }
 
 export async function staff() {

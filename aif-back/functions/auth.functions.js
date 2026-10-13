@@ -1,7 +1,8 @@
 import { authenticateStaff, deleteDirectoryAccount, directoryAccounts, noteStaffLogin } from "../lib/admin-store.js";
 import { canonicalIdentifier } from "../lib/identifier.js";
 import { passwordError } from "../lib/password.js";
-import { authenticate, findClientCode, toSessionUser, updatePassword } from "../lib/portal-store.js";
+import { sendPasswordOtpMail } from "../lib/mail.js";
+import { authenticate, findClientCode, getPortal, toSessionUser, updatePassword } from "../lib/portal-store.js";
 import {
   clearReset,
   clearSession,
@@ -72,7 +73,9 @@ export async function session() {
 }
 
 export async function forgot(body) {
+  
   const identifier = typeof body.identifier === "string" ? body.identifier : "";
+ 
   if (!canonicalIdentifier(identifier)) {
     return fail("Enter the mobile number or email on the account.", 400);
   }
@@ -81,10 +84,25 @@ export async function forgot(body) {
   if (!clientCode) {
     return fail("No investor account matches that mobile number or email.", 400);
   }
+  
+  const portal = await getPortal(clientCode);
+  const email = portal?.profile.email?.trim();
 
-  const demoCode = createDemoCode();
-  await startReset(clientCode, demoCode);
-  return ok({ message: "Verification code issued.", demoCode });
+  if (!email) return fail("This account does not have an email address.", 400);
+
+  const code = createDemoCode();
+
+  const mailed = await sendPasswordOtpMail({
+    to: email,
+    name: portal.profile.fullName,
+    code,
+  });
+  console.log('full name mailed===>',mailed)
+  if (!mailed.ok) {
+    return fail("The verification email could not be sent. Try again in a few minutes.", 502);
+  }
+  await startReset(clientCode, code);
+  return ok({ message: "A verification code was sent to the email on this account." });
 }
 
 export async function verifyOtp(body) {
