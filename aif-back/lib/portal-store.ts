@@ -1,6 +1,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { getDb } from "./mongo.js";
 import { identifierMatches } from "./identifier.js";
+import { lotPnl, money, navAsOf, normalizeQuantity, planHoldingImport, referenceNav, type NavMark } from "./holding-pnl.js";
 import type {
   BankAccount,
   Holding,
@@ -19,6 +20,7 @@ type Account = {
 };
 
 const accounts = new Map<string, Account>();
+const holdingWrites = new Map<string, Promise<unknown>>();
 
 function hashPassword(password: string, salt: string) {
   return scryptSync(password, salt, 32);
@@ -273,7 +275,7 @@ export async function getPortal(clientCode: string) {
   await ready();
   const portal = accounts.get(clientCode)?.portal;
   if (!portal) return null;
-  return presentPortal(portal, await latestNavValue());
+  return presentPortal(portal, await navMarks());
 }
 
 export async function getPasswordVersion(clientCode: string) {
@@ -455,7 +457,7 @@ function refreshMetrics(portal: PortalData) {
   };
 }
 
-async function latestNavValue() {
+async function navMarks(): Promise<NavMark[]> {
   const db = await getDb();
   const state = await db.collection("platform").findOne({ _id: "state" });
   const entries = (Array.isArray(state?.navEntries) ? state.navEntries : []) as Array<{
@@ -469,24 +471,44 @@ async function latestNavValue() {
       nav: Number(entry.nav),
       addedAt: String(entry.addedAt ?? ""),
     }))
-    .filter((entry) => Number.isFinite(entry.nav))
+    .filter((entry) => entry.date && Number.isFinite(entry.nav))
     .sort((left, right) => {
       const byDate = right.date.localeCompare(left.date);
       if (byDate !== 0) return byDate;
       return right.addedAt.localeCompare(left.addedAt);
     });
-  return sorted[0]?.nav ?? null;
+  const byDate = new Map<string, NavMark>();
+  sorted.forEach((entry) => {
+    if (!byDate.has(entry.date)) byDate.set(entry.date, { date: entry.date, nav: entry.nav });
+  });
+  return [...byDate.values()].sort((left, right) => left.date.localeCompare(right.date));
 }
 
-function presentPortal(portal: PortalData, nav: number | null): PortalData {
-  if (nav == null) return portal;
-  const holdings = portal.holdings.map((row) => {
-    const marketValue = Math.round(row.quantity * nav * 100) / 100;
-    return {
-      ...row,
-      marketValue,
-      pnl: Math.round((marketValue - row.quantity * row.averageCost) * 100) / 100,
-    };
+function todayIso() {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+async function latestNavValue() {
+  const points = await navMarks();
+  return navAsOf(points, todayIso());
+}
+
+function presentPortal(portal: PortalData, points: NavMark[]): PortalData {
+  const asOf = todayIso();
+  const current = navAsOf(points, asOf);
+  if (current == null) return portal;
+  const priced = portal.holdings.map((row) => {
+    const saved = row.costNav ?? (row.allotmentDate ? navAsOf(points, row.allotmentDate) ?? undefined : undefined);
+    const costNav = saved ?? (row.averageCost > 0 ? row.averageCost : undefined);
+    return { ...row, ...(costNav == null ? {} : { costNav }) };
+  });
+  const reference = referenceNav(priced, asOf);
+  const holdings = priced.map((row) => {
+    const marketValue = money(row.quantity * current);
+    return { ...row, marketValue, pnl: lotPnl(row, current, reference, asOf) };
   });
   const next: PortalData = { ...portal, holdings, metrics: { ...portal.metrics } };
   refreshMetrics(next);
@@ -500,8 +522,8 @@ export async function currentNav() {
 
 export async function listPortals() {
   await ready();
-  const nav = await latestNavValue();
-  return [...accounts.values()].map((account) => presentPortal(account.portal, nav));
+  const points = await navMarks();
+  return [...accounts.values()].map((account) => presentPortal(account.portal, points));
 }
 
 export async function createClient(input: {
@@ -796,6 +818,7 @@ export async function updateHoldingRow(input: {
     averageCost: current.averageCost,
     marketValue: current.marketValue,
     pnl: current.marketValue - input.quantity * current.averageCost,
+    ...(current.costNav != null ? { costNav: current.costNav } : {}),
     ...(allotmentDate ? { allotmentDate } : {}),
     ...(input.allotteeName.trim() ? { allotteeName: input.allotteeName.trim() } : {}),
     ...(pan ? { pan } : {}),
@@ -809,6 +832,21 @@ export async function updateHoldingRow(input: {
   return { holding: next };
 }
 
+export async function updateHoldingNav(clientCode: string, holdingId: string, nav: number) {
+  await ready();
+  const account = accounts.get(clientCode);
+  if (!account) return { error: "Client not found." as const };
+  const current = account.portal.holdings.find((item) => item.id === holdingId);
+  if (!current) return { error: "Holding not found." as const };
+  if (!Number.isFinite(nav) || nav <= 0) return { error: "Enter a NAV greater than zero." as const };
+  const costNav = Math.round(nav * 10000) / 10000;
+  current.costNav = costNav;
+  current.averageCost = costNav;
+  refreshMetrics(account.portal);
+  await persistInvestor(clientCode);
+  return { holding: current };
+}
+
 export async function removeHoldingRow(clientCode: string, holdingId: string) {
   await ready();
   const account = accounts.get(clientCode);
@@ -819,6 +857,13 @@ export async function removeHoldingRow(clientCode: string, holdingId: string) {
   refreshMetrics(account.portal);
   await persistInvestor(clientCode);
   return current;
+}
+
+function writeHoldings<T>(clientCode: string, task: () => Promise<T>) {
+  const previous = holdingWrites.get(clientCode) ?? Promise.resolve();
+  const run = previous.then(task, task);
+  holdingWrites.set(clientCode, run.then(() => undefined, () => undefined));
+  return run;
 }
 
 export async function importHoldingRows(
@@ -835,35 +880,63 @@ export async function importHoldingRows(
   }>,
 ) {
   await ready();
-  const account = accounts.get(clientCode);
-  if (!account) return false;
-  rows.forEach((row) => {
-    const identifier = row.identifier.toUpperCase();
-    const allotmentDate = row.allotmentDate?.trim() ?? "";
-    const pan = row.pan?.trim().toUpperCase() ?? "";
-    const id = holdingKey(identifier, allotmentDate, pan);
-    const existing = account.portal.holdings.find((item) => item.id === id);
-    const next = {
-      identifier,
-      name: row.name,
-      quantity: row.quantity,
-      averageCost: row.averageCost,
-      marketValue: row.marketValue,
-      pnl: row.marketValue - row.quantity * row.averageCost,
-      ...(allotmentDate ? { allotmentDate } : {}),
-      ...(row.allotteeName ? { allotteeName: row.allotteeName } : {}),
-      ...(pan ? { pan } : {}),
-    };
-    if (existing) {
-      Object.assign(existing, next);
-      delete (existing as { srNo?: string }).srNo;
-    } else {
-      account.portal.holdings.push({ id, ...next });
+  return writeHoldings(clientCode, async () => {
+    const account = accounts.get(clientCode);
+    if (!account) return { inserted: 0, skipped: 0, failed: [{ reason: "Client not found." }] };
+    const nav = await latestNavValue();
+    const plan = planHoldingImport(account.portal.holdings, rows, nav);
+    let inserted = 0;
+    let skipped = 0;
+    const failed: Array<{ reason: string }> = [];
+    rows.forEach((row, index) => {
+      const decision = plan[index];
+      const allotmentDate = row.allotmentDate?.trim() ?? "";
+      const pan = row.pan?.trim().toUpperCase() ?? "";
+      if (decision.status === "skip") {
+        skipped += 1;
+        return;
+      }
+      if (!allotmentDate || !pan) {
+        const identifier = row.identifier.toUpperCase();
+        const id = holdingKey(identifier, allotmentDate, pan);
+        if (account.portal.holdings.some((item) => item.id === id)) {
+          skipped += 1;
+          return;
+        }
+      }
+      if (decision.status === "fail") {
+        failed.push({ reason: decision.reason ?? "The holding could not be saved." });
+        return;
+      }
+      const identifier = row.identifier.toUpperCase();
+      const id = allotmentDate
+        ? `${holdingKey(identifier, allotmentDate, pan)}-${normalizeQuantity(row.quantity)}`
+        : holdingKey(identifier, allotmentDate, pan);
+      if (account.portal.holdings.some((item) => item.id === id)) {
+        skipped += 1;
+        return;
+      }
+      account.portal.holdings.push({
+        id,
+        identifier,
+        name: row.name,
+        quantity: row.quantity,
+        averageCost: decision.costNav ?? row.averageCost,
+        marketValue: money(row.quantity * (decision.costNav ?? nav ?? 0)),
+        pnl: 0,
+        costNav: decision.costNav,
+        ...(allotmentDate ? { allotmentDate } : {}),
+        ...(row.allotteeName ? { allotteeName: row.allotteeName } : {}),
+        ...(pan ? { pan } : {}),
+      });
+      inserted += 1;
+    });
+    if (inserted > 0) {
+      refreshMetrics(account.portal);
+      await persistInvestor(clientCode);
     }
+    return { inserted, skipped, failed };
   });
-  refreshMetrics(account.portal);
-  await persistInvestor(clientCode);
-  return true;
 }
 
 export async function addGeneratedStatement(

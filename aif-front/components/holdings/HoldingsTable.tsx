@@ -21,6 +21,14 @@ export default function HoldingsTable() {
   );
 
   const allotment = Boolean(data?.rows?.some((row) => row.allotmentDate || row.pan));
+  const merged = (data?.rows ?? []).reduce(
+    (sum, row) => ({
+      units: sum.units + row.quantity,
+      value: sum.value + row.marketValue,
+      pnl: sum.pnl + row.pnl,
+    }),
+    { units: 0, value: 0, pnl: 0 },
+  );
 
   return (
     <div className="w-full">
@@ -62,6 +70,9 @@ export default function HoldingsTable() {
                       <th scope="col" className="px-5 py-3 font-medium">Allottee</th>
                       <th scope="col" className="px-5 py-3 font-medium">PAN</th>
                       <th scope="col" className="px-5 py-3 text-right font-medium">Units</th>
+                      <th scope="col" className="px-5 py-3 text-right font-medium">NAV</th>
+                      <th scope="col" className="px-5 py-3 text-right font-medium">Market value</th>
+                      <th scope="col" className="px-5 py-3 font-medium">P&L</th>
                     </tr>
                   ) : (
                     <tr>
@@ -87,12 +98,14 @@ export default function HoldingsTable() {
                           <td className="whitespace-nowrap px-5 py-3 text-[#16324F]">{row.allotteeName || "—"}</td>
                           <td className="whitespace-nowrap px-5 py-3 text-[#3D4C5E]">{row.pan || "—"}</td>
                           <td className="whitespace-nowrap px-5 py-3 text-right tabular-nums text-[#16324F]">{formatQuantity(row.quantity)}</td>
+                          <td className="whitespace-nowrap px-5 py-3 text-right tabular-nums text-[#16324F]">{row.costNav != null ? formatNav(row.costNav) : "—"}</td>
+                          <td className="whitespace-nowrap px-5 py-3 text-right tabular-nums text-[#16324F]">{formatInr(row.marketValue)}</td>
+                          <td className="whitespace-nowrap px-5 py-3"><PnlValue value={row.pnl} /></td>
                         </tr>
                       );
                     }
                     const nav = rowNav(row, data.latestNav);
                     const marketValue = Math.round(row.quantity * nav * 100) / 100;
-                    const pnl = Math.round((marketValue - row.quantity * row.averageCost) * 100) / 100;
                     return (
                       <tr key={row.id} className={rowClass} style={rowStyle}>
                         <td className="whitespace-nowrap px-5 py-3 font-medium text-[#16324F]">{row.identifier}</td>
@@ -107,12 +120,23 @@ export default function HoldingsTable() {
                           {formatInr(marketValue)}
                         </td>
                         <td className="whitespace-nowrap px-5 py-3">
-                          <PnlValue value={pnl} />
+                          <PnlValue value={row.pnl} />
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
+                {allotment ? (
+                  <tfoot>
+                    <tr className="border-t border-[#E6EDF5] bg-[#F8FAFC] text-[#16324F]">
+                      <td className="px-5 py-3 font-semibold" colSpan={5}>Merged</td>
+                      <td className="whitespace-nowrap px-5 py-3 text-right font-semibold tabular-nums">{formatQuantity(merged.units)}</td>
+                      <td className="px-5 py-3" />
+                      <td className="whitespace-nowrap px-5 py-3 text-right font-semibold tabular-nums">{formatInr(merged.value)}</td>
+                      <td className="whitespace-nowrap px-5 py-3"><PnlValue value={merged.pnl} /></td>
+                    </tr>
+                  </tfoot>
+                ) : null}
               </table>
             </div>
           )}

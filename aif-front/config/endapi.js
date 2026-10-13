@@ -58,6 +58,9 @@ export const api = {
     clientPassword(code) {
       return route(`/api/admin/clients/${code}/password`);
     },
+    clientHoldingNav(code) {
+      return route(`/api/admin/clients/${code}/holdings/nav`);
+    },
     staff: route("/api/admin/staff"),
     staffMember(id) {
       return route(`/api/admin/staff/${id}`);

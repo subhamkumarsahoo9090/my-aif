@@ -1,12 +1,12 @@
 "use client";
 
-import { FormEvent, useState, type ReactNode } from "react";
+import { FormEvent, useEffect, useState, type ReactNode } from "react";
 import LoadError from "@/components/ui/LoadError";
 import Skeleton from "@/components/ui/Skeleton";
 import StatusBadge from "@/components/ui/StatusBadge";
 import DateField from "@/components/ui/DateField";
 import { accountTypes, annualIncomes, bankList, maritalStatuses, nomineeList, occupations, validateCreateClient } from "@/lib/client-validation";
-import { formatDate, formatInr, formatQuantity } from "@/lib/format";
+import { formatDate, formatInr, formatNav, formatPnl, formatQuantity } from "@/lib/format";
 import { formatShareCents, nomineeShareTotalCents } from "@/lib/nominee-share";
 import { passwordError } from "@/lib/password";
 import { api, apiFetch } from "@/config/endapi";
@@ -53,6 +53,14 @@ export default function Client360({ code }: { code: string }) {
   const [nominees, setNominees] = useState<Nominee[] | null>(null);
 
   const profile = data?.portal.profile;
+  const holdingsByDate = [...(data?.portal.holdings ?? [])].sort((left, right) => {
+    const earlier = left.allotmentDate ?? "";
+    const later = right.allotmentDate ?? "";
+    if (earlier === later) return 0;
+    if (!earlier) return 1;
+    if (!later) return -1;
+    return earlier.localeCompare(later);
+  });
   const nomineeDraft = nominees ?? (profile ? nomineeList(profile) : []);
   const nomineeShareCentsTotal = nomineeShareTotalCents(nomineeDraft);
 
@@ -268,7 +276,7 @@ export default function Client360({ code }: { code: string }) {
           {message ? (
             <p
               className={`rounded-2xl border px-4 py-3 text-sm ${
-                message === "Client record updated." || message === "Password updated."
+                message === "Client record updated." || message === "Password updated." || message === "NAV updated."
                   ? "border-[#D7F0E3] bg-[#F3FBF6] text-[#157A45]"
                   : "border-[#F6D5D5] bg-[#FFF6F6] text-danger"
               }`}
@@ -535,24 +543,40 @@ export default function Client360({ code }: { code: string }) {
 
           {tab === "Holdings" ? (
             <DataCard icon={<GridIcon />} title="Holdings" subtitle="Allotments matched to this client">
-              {data.portal.holdings.length === 0 ? (
+              {holdingsByDate.length === 0 ? (
                 <Empty>Nothing recorded yet.</Empty>
-              ) : data.portal.holdings.some((row) => row.allotmentDate || row.pan) ? (
+              ) : holdingsByDate.some((row) => row.allotmentDate || row.pan) ? (
                 <Table
-                  columns={["ISIN", "Description", "Allotment date", "Allottee", "PAN", "Units"]}
-                  rows={data.portal.holdings.map((row) => [
-                    row.identifier,
-                    row.name,
-                    row.allotmentDate ? formatDate(row.allotmentDate) : "—",
-                    row.allotteeName || "—",
-                    row.pan || "—",
-                    formatQuantity(row.quantity),
-                  ])}
+                  columns={["ISIN", "Description", "Allotment date", "Allottee", "PAN", "Units", "NAV", "Market value", "P&L"]}
+                  rows={[
+                    ...holdingsByDate.map((row) => [
+                      row.identifier,
+                      row.name,
+                      row.allotmentDate ? formatDate(row.allotmentDate) : "—",
+                      row.allotteeName || "—",
+                      row.pan || "—",
+                      formatQuantity(row.quantity),
+                      <HoldingNavEditor key={row.id} code={code} holdingId={row.id} value={row.costNav} onSaved={(text, ok) => { setMessage(text); if (ok) reload(); }} />,
+                      formatInr(row.marketValue),
+                      formatPnl(row.pnl),
+                    ]),
+                    [
+                      "Merged",
+                      "",
+                      "",
+                      "",
+                      "",
+                      formatQuantity(holdingsByDate.reduce((sum, row) => sum + row.quantity, 0)),
+                      "",
+                      formatInr(holdingsByDate.reduce((sum, row) => sum + row.marketValue, 0)),
+                      formatPnl(holdingsByDate.reduce((sum, row) => sum + row.pnl, 0)),
+                    ],
+                  ]}
                 />
               ) : (
                 <Table
                   columns={["Identifier", "Name", "Quantity", "Avg cost", "Market value", "P&L"]}
-                  rows={data.portal.holdings.map((row) => [
+                  rows={holdingsByDate.map((row) => [
                     row.identifier,
                     row.name,
                     formatQuantity(row.quantity),
@@ -594,7 +618,7 @@ export default function Client360({ code }: { code: string }) {
               <Metric label="Invested capital" value={formatInr(data.portal.metrics.investedCapital)} note="Capital contributions on the ledger" />
               <Metric label="Current valuation" value={formatInr(data.portal.metrics.currentValuation)} note="Market value of current holdings" />
               <Metric label="Realized P&L" value={formatInr(data.portal.metrics.realizedPnl)} note="P&L already booked" signed={data.portal.metrics.realizedPnl} />
-              <Metric label="Unrealized P&L" value={formatInr(data.portal.metrics.unrealizedPnl)} note="P&L still open on holdings" signed={data.portal.metrics.unrealizedPnl} />
+              <Metric label="Unrealized P&L" value={formatInr(data.portal.metrics.unrealizedPnl)} note="After one year, units at the newest completed NAV minus current value" signed={data.portal.metrics.unrealizedPnl} />
             </section>
           ) : null}
 
@@ -766,6 +790,57 @@ function DataCard({
       </div>
       <div className="mt-4">{children}</div>
     </section>
+  );
+}
+
+function HoldingNavEditor({
+  code,
+  holdingId,
+  value,
+  onSaved,
+}: {
+  code: string;
+  holdingId: string;
+  value: number | undefined;
+  onSaved: (message: string, ok: boolean) => void;
+}) {
+  const [nav, setNav] = useState(value == null ? "" : String(value));
+  const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    setNav(value == null ? "" : String(value));
+  }, [value]);
+
+  async function save() {
+    const next = Number(nav);
+    if (!Number.isFinite(next) || next <= 0) {
+      onSaved("Enter a NAV greater than zero.", false);
+      return;
+    }
+    setPending(true);
+    const response = await apiFetch(api.admin.clientHoldingNav(code), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ holdingId, nav: next }),
+    });
+    const payload = (await response.json().catch(() => ({}))) as { message?: string };
+    setPending(false);
+    onSaved(response.ok ? "NAV updated." : payload.message ?? "The NAV could not be saved.", response.ok);
+  }
+
+  return (
+    <span className="flex items-center gap-2">
+      <input
+        value={nav}
+        inputMode="decimal"
+        aria-label="NAV"
+        onChange={(event) => setNav(event.target.value)}
+        className="w-28 rounded-xl border border-[#E3E8EF] bg-white px-2 py-1.5 text-right text-sm text-[#16324F] outline-none focus:border-[#F97316]"
+      />
+      <button type="button" onClick={() => void save()} disabled={pending} className="rounded-full border border-[#D5DDE6] bg-white px-3 py-1.5 text-xs font-medium text-[#1B3C6C] hover:bg-[#F8FAFC] disabled:opacity-60">
+        {pending ? "Saving..." : "Save"}
+      </button>
+    </span>
   );
 }
 

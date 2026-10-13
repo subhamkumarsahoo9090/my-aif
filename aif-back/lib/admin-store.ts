@@ -12,6 +12,7 @@ import {
   listHoldingRows,
   listLedgerRows,
   updateHoldingRow,
+  updateHoldingNav,
   updateLedgerRow,
   removeHoldingRow,
   removeLedgerRow,
@@ -21,7 +22,9 @@ import {
   ready,
   removeInvestor,
   updateClientProfile,
+  currentNav,
 } from "./portal-store.js";
+import { holdingSignature } from "./holding-pnl.js";
 import type { AdminRole, AdminUser, ClientStatus, PortalData } from "./types.js";
 import { investorMatchScore, parseLedgerStatement } from "./ledger-statement.js";
 import { valuationTrend } from "../functions/portal.functions.js";
@@ -47,6 +50,8 @@ export type ImportJob = {
   status: "committed" | "failed";
   valid: number;
   failed: number;
+  inserted?: number;
+  skipped?: number;
   at: string;
   actor: string;
   clientCode?: string;
@@ -82,6 +87,7 @@ export type AuditEntry = {
 export type ImportRow = {
   line: number;
   ok: boolean;
+  skipped?: boolean;
   errors: string[];
   values: Record<string, string>;
 };
@@ -769,6 +775,12 @@ async function previewAllotmentRows(parsed: Array<{ line: number; values: Record
       if (!byPan.has(token)) byPan.set(token, { code: portal.profile.tradingCode, name: portal.profile.fullName });
     });
   });
+  const nav = await currentNav();
+  const seen = new Set(
+    (await listHoldingRows())
+      .map((row) => holdingSignature(row))
+      .filter(Boolean),
+  );
   return parsed.map((row) => {
     const source = row.values;
     const errors: string[] = [];
@@ -790,6 +802,27 @@ async function previewAllotmentRows(parsed: Array<{ line: number; values: Record
     else if (!matched) errors.push("This PAN does not match a client.");
     if (!allotmentDate) errors.push("Date of allotment must be DD-MM-YYYY.");
     if (!Number.isFinite(units) || units <= 0) errors.push("Number of units must be greater than zero.");
+    const signature = holdingSignature({ identifier: isin, pan, allotmentDate, quantity: units });
+    if (errors.length === 0 && signature && seen.has(signature)) {
+      return {
+        line: row.line,
+        ok: false,
+        skipped: true,
+        errors: ["Already saved."],
+        values: {
+          isin,
+          description,
+          allotmentdate: allotmentDate,
+          allottee,
+          pan,
+          units: unitsText,
+          clientcode: matched?.code ?? "",
+          clientname: matched?.name ?? "",
+        },
+      };
+    }
+    if (errors.length === 0 && nav == null) errors.push("No NAV has been saved yet.");
+    if (errors.length === 0 && signature) seen.add(signature);
     return {
       line: row.line,
       ok: errors.length === 0,
@@ -855,6 +888,10 @@ export async function commitImport(actor: string, type: ImportKind, fileName: st
 
   if (type === "holdings") await rememberHoldingsSecurities(rows);
 
+  let inserted = 0;
+  let skipped = rows.filter((row) => row.skipped).length;
+  const saveErrors: string[] = [];
+
   for (const [code, group] of grouped) {
     if (type === "ledger") {
       await importLedgerRows(
@@ -889,7 +926,10 @@ export async function commitImport(actor: string, type: ImportKind, fileName: st
           pan: cell(row.values, "pan"),
         });
       }
-      await importHoldingRows(code, holdingRows);
+      const saved = await importHoldingRows(code, holdingRows);
+      inserted += saved.inserted;
+      skipped += saved.skipped;
+      saved.failed.forEach((item) => saveErrors.push(item.reason));
     }
   }
 
@@ -898,13 +938,15 @@ export async function commitImport(actor: string, type: ImportKind, fileName: st
   for (const client of clients) {
     names.push((await getPortal(client))?.profile.fullName || client);
   }
+  const failed = rows.filter((row) => !row.ok && !row.skipped).length + saveErrors.length;
   const job: ImportJob = {
     id: `imp-${imports.length + 1}`,
     type,
     fileName: fileName || `${type}.csv`,
-    status: valid.length > 0 ? "committed" : "failed",
-    valid: valid.length,
-    failed: rows.length - valid.length,
+    status: type === "holdings" ? (inserted > 0 || skipped > 0 ? "committed" : "failed") : valid.length > 0 ? "committed" : "failed",
+    valid: type === "holdings" ? inserted : valid.length,
+    failed,
+    ...(type === "holdings" ? { inserted, skipped } : {}),
     at: stamp(),
     actor,
     clientCode: clients.join(", "),
@@ -914,11 +956,13 @@ export async function commitImport(actor: string, type: ImportKind, fileName: st
   await recordAudit({
     actor,
     action: "Import committed",
-    detail: `${job.fileName}: ${job.valid} valid, ${job.failed} failed`,
+    detail: type === "holdings"
+      ? `${job.fileName}: ${inserted} inserted, ${skipped} already saved, ${failed} failed`
+      : `${job.fileName}: ${job.valid} valid, ${job.failed} failed`,
     clientCode: "",
   });
 
-  const errorReport = ["line,error", ...rows.filter((row) => !row.ok).map((row) => `${row.line},"${row.errors.join("; ")}"`)].join("\n");
+  const errorReport = ["line,error", ...rows.filter((row) => !row.ok && !row.skipped).map((row) => `${row.line},"${row.errors.join("; ")}"`), ...saveErrors.map((reason) => `,"${reason}"`)].join("\n");
   return { job, rows, errorReport };
 }
 
@@ -1330,6 +1374,22 @@ export async function editHolding(
     entityId: result.holding.id,
     clientCode: input.nextClientCode,
     detail: `${result.holding.name} · ${result.holding.identifier}`,
+  });
+  return { ok: true as const };
+}
+
+export async function setHoldingNav(actor: AdminUser, clientCode: string, holdingId: string, nav: number) {
+  await ensureAdmin();
+  const result = await updateHoldingNav(clientCode, holdingId, nav);
+  if ("error" in result) return result;
+  await recordAudit({
+    actor: actor.name,
+    userId: actor.id,
+    action: "Holding NAV updated",
+    targetEntity: "holding",
+    entityId: holdingId,
+    clientCode,
+    detail: `${result.holding.identifier} · NAV ${result.holding.costNav}`,
   });
   return { ok: true as const };
 }

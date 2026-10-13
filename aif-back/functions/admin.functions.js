@@ -3,6 +3,7 @@ import {
   addSecurity,
   deleteSecurity,
   editHolding,
+  setHoldingNav,
   deleteHolding,
   editLedger,
   deleteLedger,
@@ -177,6 +178,18 @@ export async function client(code) {
   return ok(record);
 }
 
+export async function updateHoldingNav(code, body) {
+  const { blocked, user } = await adminOf("admin", "clients");
+  if (blocked) return blocked;
+  const holdingId = text(body, "holdingId");
+  const nav = Number(body?.nav);
+  if (!holdingId) return fail("Choose a holding.", 400);
+  if (!Number.isFinite(nav) || nav <= 0) return fail("Enter a NAV greater than zero.", 400);
+  const result = await setHoldingNav(user, code, holdingId, nav);
+  if ("error" in result) return fail(result.error, result.error === "Holding not found." || result.error === "Client not found." ? 404 : 400);
+  return ok({ ok: true });
+}
+
 export async function updateClient(code, body) {
   const { blocked, user } = await adminOf("admin", "clients");
   if (blocked) return blocked;
@@ -309,7 +322,8 @@ export async function importFile(body) {
     return ok({
       rows,
       valid: rows.filter((row) => row.ok).length,
-      failed: rows.filter((row) => !row.ok).length,
+      failed: rows.filter((row) => !row.ok && !row.skipped).length,
+      skipped: rows.filter((row) => row.skipped).length,
     });
   }
 

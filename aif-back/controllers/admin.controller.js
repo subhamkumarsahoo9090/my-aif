@@ -11,6 +11,7 @@ export const createClient = controller((req) => admin.createClient(req.body));
 export const client = controller((req) => admin.client(req.params.code));
 export const updateClient = controller((req) => admin.updateClient(req.params.code, req.body));
 export const resetClientPassword = controller((req) => admin.resetClientPassword(req.params.code, req.body ?? {}));
+export const updateHoldingNav = controller((req) => admin.updateHoldingNav(req.params.code, req.body ?? {}));
 export const staff = controller(() => admin.staff());
 export const createStaff = controller((req) => admin.createStaffAccount(req.body ?? {}));
 export const updateStaff = controller((req) => admin.updateStaffAccount(req.params.id, req.body));

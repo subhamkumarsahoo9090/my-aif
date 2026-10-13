@@ -67,7 +67,7 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [securities, setSecurities] = useState<SecurityOption[]>([]);
   const [rows, setRows] = useState<PreviewRow[] | null>(null);
-  const [counts, setCounts] = useState({ valid: 0, failed: 0 });
+  const [counts, setCounts] = useState({ valid: 0, failed: 0, skipped: 0 });
   const [report, setReport] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -157,6 +157,7 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
         rows?: PreviewRow[];
         valid?: number;
         failed?: number;
+        skipped?: number;
         message?: string;
       };
       if (!response.ok || !data.rows) {
@@ -164,7 +165,7 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
         return;
       }
       setRows(data.rows);
-      setCounts({ valid: data.valid ?? 0, failed: data.failed ?? 0 });
+      setCounts({ valid: data.valid ?? 0, failed: data.failed ?? 0, skipped: data.skipped ?? 0 });
     } catch {
       setMessage("The file could not be checked.");
     } finally {
@@ -180,7 +181,7 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
       body: JSON.stringify({ step: "commit", type, csv, fileName, clientCode }),
     });
     const data = (await response.json().catch(() => ({}))) as {
-      job?: { valid: number; failed: number };
+      job?: { valid: number; failed: number; inserted?: number; skipped?: number };
       errorReport?: string;
       message?: string;
     };
@@ -193,7 +194,7 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
     setMessage(
       isLedger
         ? `Saved ${data.job.valid} rows for this client. ${data.job.failed} rows were left out.`
-        : `Committed ${data.job.valid} rows. ${data.job.failed} rows were logged as errors.`,
+        : `Inserted ${data.job.inserted ?? data.job.valid} holdings. Skipped ${data.job.skipped ?? 0} already saved. ${data.job.failed} failed.`,
     );
     if (isLedger) await loadHistory();
   }
@@ -550,7 +551,7 @@ export default function ImportPipeline({ kind }: { kind: ImportKind }) {
               <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#E7F0FF] text-sm font-semibold text-[#1D4E89]">2</span>
               <div>
                 <h2 className="text-[15px] font-semibold text-[#16324F]">Preview</h2>
-                <p className="text-xs text-[#7B8794]">{counts.valid} rows ready · {counts.failed} rows failed</p>
+                <p className="text-xs text-[#7B8794]">{counts.valid} rows ready · {counts.skipped} already saved · {counts.failed} rows failed</p>
               </div>
             </div>
             <button type="button" onClick={() => void commit()} className={orangeButtonClass} disabled={pending || counts.valid === 0}>

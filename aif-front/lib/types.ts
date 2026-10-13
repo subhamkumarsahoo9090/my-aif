@@ -27,6 +27,7 @@ export type Holding = {
   averageCost: number;
   marketValue: number;
   pnl: number;
+  costNav?: number;
   allotmentDate?: string;
   allotteeName?: string;
   pan?: string;

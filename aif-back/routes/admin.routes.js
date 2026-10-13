@@ -13,6 +13,7 @@ router.post("/clients", admin.createClient);
 router.get("/clients/:code", admin.client);
 router.patch("/clients/:code", admin.updateClient);
 router.post("/clients/:code/password", admin.resetClientPassword);
+router.post("/clients/:code/holdings/nav", admin.updateHoldingNav);
 router.get("/staff", admin.staff);
 router.post("/staff", admin.createStaff);
 router.patch("/staff/:id", admin.updateStaff);
