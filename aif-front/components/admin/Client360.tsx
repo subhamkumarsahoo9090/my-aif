@@ -33,6 +33,7 @@ type Tab = (typeof tabs)[number];
 
 type RecordResponse = {
   portal: PortalData;
+  currentNav: number | null;
   incomplete: boolean;
   documents: Array<{ name: string; status: string }>;
   audit: Array<{ id: string; at: string; actor: string; action: string; detail: string }>;
@@ -51,6 +52,7 @@ export default function Client360({ code }: { code: string }) {
   const [tab, setTab] = useState<Tab>("Profile");
   const [message, setMessage] = useState<string | null>(null);
   const [nominees, setNominees] = useState<Nominee[] | null>(null);
+  const [showHoldingCost, setShowHoldingCost] = useState(false);
 
   const profile = data?.portal.profile;
   const holdingsByDate = [...(data?.portal.holdings ?? [])].sort((left, right) => {
@@ -61,17 +63,49 @@ export default function Client360({ code }: { code: string }) {
     if (!later) return -1;
     return earlier.localeCompare(later);
   });
+  const purchasePortfolio = purchasePortfolioByHolding(holdingsByDate);
+  const totalUnits = holdingsByDate.reduce((sum, row) => sum + row.quantity, 0);
+  const currentPortfolio = data?.currentNav != null ? Math.round(totalUnits * data.currentNav * 100) / 100 : null;
+  const currentPnl = holdingsByDate.reduce((sum, row) => sum + row.pnl, 0);
   const nomineeDraft = nominees ?? (profile ? nomineeList(profile) : []);
+
+  useEffect(() => {
+    if (!profile || (profile.kra && profile.fatca)) return;
+    const cleanPan = profile.pan.trim().toUpperCase();
+    if (!/^[A-Z]{5}\d{4}[A-Z]$/.test(cleanPan) || !/^\d{4}-\d{2}-\d{2}$/.test(profile.dateOfBirth)) return;
+    let active = true;
+    void (async () => {
+      try {
+        const response = await apiFetch(api.admin.kraStatus, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pan: cleanPan, dob: profile.dateOfBirth }),
+        });
+        const payload = (await response.json().catch(() => ({}))) as { kra?: boolean; fatca?: boolean };
+        if (!active || !response.ok) return;
+        const next: { kra?: boolean; fatca?: boolean } = {};
+        if (!profile.kra && payload.kra === true) next.kra = true;
+        if (!profile.fatca && payload.fatca === true) next.fatca = true;
+        if (next.kra == null && next.fatca == null) return;
+        await patch(next, "Compliance updated.");
+      } catch {
+        // Leave compliance unticked when the check cannot be completed.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [profile]);
   const nomineeShareCentsTotal = nomineeShareTotalCents(nomineeDraft);
 
-  async function patch(body: Record<string, unknown>) {
+  async function patch(body: Record<string, unknown>, success = "Client record updated.") {
     const response = await apiFetch(api.admin.client(code), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     const payload = (await response.json().catch(() => ({}))) as { message?: string };
-    setMessage(response.ok ? "Client record updated." : payload.message ?? "The update could not be saved.");
+    setMessage(response.ok ? success : payload.message ?? "The update could not be saved.");
     if (response.ok) {
       setNominees(null);
       reload();
@@ -505,8 +539,8 @@ export default function Client360({ code }: { code: string }) {
           ) : null}
 
           {tab === "KRA" ? (
-            <form key={`${profile.tradingCode}-kra`} onSubmit={saveCompliance} className={`${cardClass} p-5`}>
-              <SectionHeading icon={<ShieldIcon />} title="Compliance" subtitle="KRA verification and FATCA status" />
+            <form key={`${profile.tradingCode}-${profile.kra}-${profile.fatca}-kra`} onSubmit={saveCompliance} className={`${cardClass} p-5`}>
+              <SectionHeading icon={<ShieldIcon />} title="Compliance" subtitle="KRA ticks for status 07. FATCA ticks when the FATCA flag has a value." />
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <label className="flex items-center gap-3 rounded-xl border border-[#EEF2F6] bg-[#F8FAFC] px-4 py-3 text-sm font-medium text-[#1B3C6C]">
                   <input name="kra" type="checkbox" defaultChecked={profile.kra} />
@@ -542,13 +576,31 @@ export default function Client360({ code }: { code: string }) {
           ) : null}
 
           {tab === "Holdings" ? (
-            <DataCard icon={<GridIcon />} title="Holdings" subtitle="Allotments matched to this client">
+            <DataCard
+              icon={<GridIcon />}
+              title="Holdings"
+              subtitle="Allotments matched to this client"
+              action={
+                <button
+                  type="button"
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#2E5FA5] hover:bg-[#F4F7FB]"
+                  aria-pressed={showHoldingCost}
+                  aria-label={showHoldingCost ? "Hide NAV and Purchase Portfolio" : "Show NAV and Purchase Portfolio"}
+                  onClick={() => setShowHoldingCost((current) => !current)}
+                >
+                  {showHoldingCost ? <EyeIcon /> : <EyeOffIcon />}
+                </button>
+              }
+            >
               {holdingsByDate.length === 0 ? (
                 <Empty>Nothing recorded yet.</Empty>
-              ) : holdingsByDate.some((row) => row.allotmentDate || row.pan) ? (
+              ) : (
+                <>
+              {holdingsByDate.some((row) => row.allotmentDate || row.pan) ? (
                 <Table
-                  columns={["ISIN", "Description", "Allotment date", "Allottee", "PAN", "Units", "NAV", "Market value", "P&L"]}
-                  rows={[
+                  {...visibleHoldingColumns(
+                    ["ISIN", "Description", "Allotment date", "Allottee", "PAN", "Units", "NAV", "Current NAV", "Purchase Portfolio", "P&L"],
+                    [
                     ...holdingsByDate.map((row) => [
                       row.identifier,
                       row.name,
@@ -557,7 +609,8 @@ export default function Client360({ code }: { code: string }) {
                       row.pan || "—",
                       formatQuantity(row.quantity),
                       <HoldingNavEditor key={row.id} code={code} holdingId={row.id} value={row.costNav} onSaved={(text, ok) => { setMessage(text); if (ok) reload(); }} />,
-                      formatInr(row.marketValue),
+                      data.currentNav != null ? formatNav(data.currentNav) : "—",
+                      formatPortfolio(purchasePortfolio.get(row.id)),
                       formatPnl(row.pnl),
                     ]),
                     [
@@ -568,25 +621,35 @@ export default function Client360({ code }: { code: string }) {
                       "",
                       formatQuantity(holdingsByDate.reduce((sum, row) => sum + row.quantity, 0)),
                       "",
-                      formatInr(holdingsByDate.reduce((sum, row) => sum + row.marketValue, 0)),
+                      data.currentNav != null ? formatNav(data.currentNav) : "—",
+                      "",
                       formatPnl(holdingsByDate.reduce((sum, row) => sum + row.pnl, 0)),
                     ],
-                  ]}
+                  ],
+                    showHoldingCost,
+                  )}
                 />
               ) : (
                 <Table
-                  columns={["Identifier", "Name", "Quantity", "Avg cost", "Market value", "P&L"]}
-                  rows={holdingsByDate.map((row) => [
+                  {...visibleHoldingColumns(
+                    ["Identifier", "Name", "Quantity", "Avg cost", "Current NAV", "Purchase Portfolio", "P&L"],
+                    holdingsByDate.map((row) => [
                     row.identifier,
                     row.name,
                     formatQuantity(row.quantity),
                     formatInr(row.averageCost),
-                    formatInr(row.marketValue),
+                    data.currentNav != null ? formatNav(data.currentNav) : "—",
+                    formatInr(purchasePortfolio.get(row.id) ?? Math.round(row.quantity * row.averageCost * 100) / 100),
                     <span key={row.id} className={row.pnl < 0 ? "font-medium text-danger" : "font-medium text-[#157A45]"}>
                       {formatInr(row.pnl)}
                     </span>,
-                  ])}
+                  ]),
+                    showHoldingCost,
+                  )}
                 />
+              )}
+              <HoldingsTotals portfolio={currentPortfolio} pnl={currentPnl} />
+                </>
               )}
             </DataCard>
           ) : null}
@@ -618,7 +681,7 @@ export default function Client360({ code }: { code: string }) {
               <Metric label="Invested capital" value={formatInr(data.portal.metrics.investedCapital)} note="Capital contributions on the ledger" />
               <Metric label="Current valuation" value={formatInr(data.portal.metrics.currentValuation)} note="Market value of current holdings" />
               <Metric label="Realized P&L" value={formatInr(data.portal.metrics.realizedPnl)} note="P&L already booked" signed={data.portal.metrics.realizedPnl} />
-              <Metric label="Unrealized P&L" value={formatInr(data.portal.metrics.unrealizedPnl)} note="After one year, units at the newest completed NAV minus current value" signed={data.portal.metrics.unrealizedPnl} />
+              <Metric label="Unrealized P&L" value={formatInr(data.portal.metrics.unrealizedPnl)} note="After one year, current value minus that allotment’s purchase NAV" signed={data.portal.metrics.unrealizedPnl} />
             </section>
           ) : null}
 
@@ -776,20 +839,52 @@ function DataCard({
   icon,
   title,
   subtitle,
+  action,
   children,
 }: {
   icon: ReactNode;
   title: string;
   subtitle: string;
+  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section className={cardClass}>
-      <div className="px-5 pt-5">
+      <div className="flex items-start justify-between gap-3 px-5 pt-5">
         <SectionHeading icon={icon} title={title} subtitle={subtitle} />
+        {action}
       </div>
       <div className="mt-4">{children}</div>
     </section>
+  );
+}
+
+const hiddenHoldingColumns = new Set(["NAV", "Purchase Portfolio"]);
+
+function visibleHoldingColumns(columns: string[], rows: ReactNode[][], showCost: boolean) {
+  if (showCost) return { columns, rows };
+  const kept = columns.map((column, index) => (hiddenHoldingColumns.has(column) ? -1 : index)).filter((index) => index >= 0);
+  return {
+    columns: kept.map((index) => columns[index]),
+    rows: rows.map((row) => kept.map((index) => row[index])),
+  };
+}
+
+function EyeIcon() {
+  return (
+    <Icon>
+      <path d="M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12Z" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="2.5" />
+    </Icon>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <Icon>
+      <path d="M4 5.5 20 18.5" strokeLinecap="round" />
+      <path d="M9.2 8.2A8 8 0 0 1 12 6.5c6 0 9.5 5.5 9.5 5.5a17 17 0 0 1-3.2 3.6M14.2 14.4A2.5 2.5 0 0 1 9.8 11M6.2 9.1C4.2 10.5 2.5 12 2.5 12S6 17.5 12 17.5c1.2 0 2.3-.3 3.3-.7" strokeLinecap="round" strokeLinejoin="round" />
+    </Icon>
   );
 }
 
@@ -865,6 +960,24 @@ function Table({ columns, rows }: { columns: string[]; rows: ReactNode[][] }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function HoldingsTotals({ portfolio, pnl }: { portfolio: number | null; pnl: number }) {
+  const tone = pnl < 0 ? "text-danger" : pnl > 0 ? "text-[#157A45]" : "text-[#16324F]";
+  return (
+    <div className="grid gap-4 border-t border-[#E6EDF5] px-5 py-5 sm:grid-cols-2">
+      <div>
+        <p className="text-sm font-medium text-[#7B8794]">Current portfolio</p>
+        <p className="mt-1 text-xl font-semibold tracking-tight text-[#16324F]">{portfolio == null ? "—" : formatInr(portfolio)}</p>
+        <p className="mt-1 text-xs text-[#7B8794]">Total units × current NAV</p>
+      </div>
+      <div>
+        <p className="text-sm font-medium text-[#7B8794]">Current P&L</p>
+        <p className={`mt-1 text-xl font-semibold tracking-tight ${tone}`}>{formatPnl(pnl)}</p>
+        <p className="mt-1 text-xs text-[#7B8794]">After one year, current value minus that allotment’s purchase NAV</p>
+      </div>
     </div>
   );
 }
@@ -1003,6 +1116,21 @@ function primaryBank(profile: PortalData["profile"]): BankAccount {
       dpOrderId: "",
     }
   );
+}
+
+function purchasePortfolioByHolding(rows: Array<{ id: string; quantity: number; costNav?: number }>) {
+  let units = 0;
+  const values = new Map<string, number | null>();
+  rows.forEach((row) => {
+    units += row.quantity;
+    const purchase = row.costNav;
+    values.set(row.id, purchase == null || !Number.isFinite(purchase) ? null : Math.round(units * purchase * 100) / 100);
+  });
+  return values;
+}
+
+function formatPortfolio(value: number | null | undefined) {
+  return value == null ? "—" : formatInr(value);
 }
 
 function initials(name: string) {

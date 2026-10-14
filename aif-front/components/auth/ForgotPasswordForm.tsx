@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -16,6 +16,10 @@ import { passwordError } from "@/lib/password";
 
 type Step = "identify" | "otp" | "reset" | "done";
 
+function readStep(value: unknown): Step {
+  return value === "otp" || value === "reset" || value === "done" ? value : "identify";
+}
+
 export default function ForgotPasswordForm() {
   const { user, ready } = useApp();
   const router = useRouter();
@@ -23,12 +27,40 @@ export default function ForgotPasswordForm() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [doneMessage, setDoneMessage] = useState("");
+  const flow = useRef(0);
+
+  function showStep(next: Step) {
+    window.history.pushState({ forgotStep: next }, "");
+    setStep(next);
+    setError(null);
+  }
 
   useEffect(() => {
     if (ready && user) {
       router.replace("/dashboard");
     }
   }, [ready, user, router]);
+
+  useEffect(() => {
+    if (window.history.state?.forgotStep == null) {
+      window.history.replaceState({ forgotStep: "identify" }, "");
+    } else {
+      setStep(readStep(window.history.state.forgotStep));
+    }
+
+    function onPop(event: PopStateEvent) {
+      flow.current += 1;
+      setPending(false);
+      setError(null);
+      setStep(readStep(event.state?.forgotStep));
+    }
+
+    window.addEventListener("popstate", onPop);
+    return () => {
+      flow.current += 1;
+      window.removeEventListener("popstate", onPop);
+    };
+  }, []);
 
   async function post(url: string, body: object) {
     const response = await apiFetch(url, {
@@ -44,34 +76,38 @@ export default function ForgotPasswordForm() {
 
   async function onIdentify(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const ticket = flow.current;
     setPending(true);
     setError(null);
     const form = new FormData(event.currentTarget);
     const result = await post(api.auth.forgot, {
       identifier: String(form.get("identifier") ?? ""),
     });
+    if (ticket !== flow.current || window.location.pathname !== "/forgot-password") return;
     setPending(false);
     if (!result.ok) {
       setError(result.data.message ?? "The reset request could not be sent.");
       return;
     }
-    setStep("otp");
+    showStep("otp");
   }
 
   async function onVerify(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const ticket = flow.current;
     setPending(true);
     setError(null);
     const form = new FormData(event.currentTarget);
     const result = await post(api.auth.verifyOtp, {
       code: String(form.get("code") ?? ""),
     });
+    if (ticket !== flow.current || window.location.pathname !== "/forgot-password") return;
     setPending(false);
     if (!result.ok) {
       setError(result.data.message ?? "That code could not be verified.");
       return;
     }
-    setStep("reset");
+    showStep("reset");
   }
 
   async function onReset(event: FormEvent<HTMLFormElement>) {
@@ -145,8 +181,12 @@ export default function ForgotPasswordForm() {
           type="button"
           className={secondaryButtonClass}
           onClick={() => {
-            setStep("identify");
             setError(null);
+            if (window.history.state?.forgotStep === "otp") {
+              window.history.back();
+              return;
+            }
+            setStep("identify");
           }}
         >
           Use a different mobile or email

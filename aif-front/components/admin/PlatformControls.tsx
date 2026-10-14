@@ -1,10 +1,9 @@
 "use client";
 
-import { FormEvent, useState, type ReactNode, type SelectHTMLAttributes } from "react";
+import { FormEvent, useState, type ReactNode } from "react";
 import { LuPencil, LuTrash2 } from "react-icons/lu";
 import LoadError from "@/components/ui/LoadError";
 import Skeleton from "@/components/ui/Skeleton";
-import DateField from "@/components/ui/DateField";
 import { api, apiFetch } from "@/config/endapi";
 import { usePortalResource } from "@/lib/use-portal-resource";
 
@@ -18,9 +17,7 @@ const defaultSecuritySymbol = "WEALTH DISCOVERY INVESTMENT TRUST";
 
 export default function PlatformControls() {
   const { data, status, reload } = usePortalResource<Platform>(api.admin.platform);
-  const clients = usePortalResource<{ clients: Array<{ code: string; name: string }> }>(api.admin.clients);
   const [message, setMessage] = useState<string | null>(null);
-  const [pendingOverride, setPendingOverride] = useState<FormData | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Platform["securities"][number] | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [symbol, setSymbol] = useState(defaultSecuritySymbol);
@@ -37,12 +34,6 @@ export default function PlatformControls() {
     setMessage(response.ok ? success : payload.message ?? "The change could not be saved.");
     if (response.ok) reload();
     return response.ok;
-  }
-
-  async function onKra(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const fields = Object.fromEntries(new FormData(event.currentTarget).entries());
-    await post({ action: "kra", ...fields, timeoutSeconds: Number(fields.timeoutSeconds) });
   }
 
   async function onSecurity(event: FormEvent<HTMLFormElement>) {
@@ -67,13 +58,6 @@ export default function PlatformControls() {
     setIsin(security.isin || security.identifier);
   }
 
-  async function confirmOverride() {
-    if (!pendingOverride) return;
-    const fields = Object.fromEntries(pendingOverride.entries());
-    const ok = await post({ action: "override", ...fields, amount: Number(fields.amount) });
-    if (ok) setPendingOverride(null);
-  }
-
   return (
     <div className="flex flex-col gap-4">
       {status === "loading" ? <Skeleton className="h-40" /> : null}
@@ -81,27 +65,9 @@ export default function PlatformControls() {
       {message ? <p className={`${cardClass} px-5 py-3 text-sm text-[#16324F]`}>{message}</p> : null}
       {status === "ready" && data ? (
         <>
-          <form onSubmit={onKra} className={`${cardClass} p-5`}>
-            <SectionHeading index="1" icon={<LinkIcon />} title="KRA provider" subtitle="Endpoint, token, and timeout used for KYC checks." />
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Endpoint" className="md:col-span-2">
-                <input name="endpoint" defaultValue={data.kra.endpoint} placeholder="https://" className={fieldClass} />
-              </Field>
-              <Field label="Timeout seconds">
-                <input name="timeoutSeconds" type="number" defaultValue={data.kra.timeoutSeconds} className={fieldClass} />
-              </Field>
-              <Field label="Token">
-                <input name="token" defaultValue={data.kra.token} className={fieldClass} />
-              </Field>
-            </div>
-            <div className="mt-5 flex justify-end">
-              <button type="submit" className={orangeButtonClass}>Save KRA</button>
-            </div>
-          </form>
-
           <section className={cardClass}>
             <div className="px-5 pt-5">
-              <SectionHeading index="2" icon={<GridIcon />} title="Security master" subtitle="ISINs from holdings uploads, plus any security you add here." />
+              <SectionHeading index="1" icon={<GridIcon />} title="Security master" subtitle="ISINs from holdings uploads, plus any security you add here." />
             </div>
             {data.securities.length === 0 ? (
               <p className="mx-5 mb-5 rounded-xl border border-dashed border-[#E3E8EF] px-3 py-6 text-center text-sm text-[#7B8794]">No securities yet.</p>
@@ -173,47 +139,6 @@ export default function PlatformControls() {
               </div>
             </form>
           </section>
-
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              setPendingOverride(new FormData(event.currentTarget));
-            }}
-            className={`${cardClass} p-5`}
-          >
-            <SectionHeading index="3" icon={<ListIcon />} title="Ledger override" subtitle="Post a corrected debit or credit and keep it in the audit log." />
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Client" required>
-                <Select name="clientCode" required defaultValue="">
-                  <option value="">Select client</option>
-                  {(clients.data?.clients ?? []).map((client) => (
-                    <option key={client.code} value={client.code}>{client.name} ({client.code})</option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Date" required>
-                <DateField name="date" required className={`${fieldClass} pr-10!`} />
-              </Field>
-              <Field label="Type" required>
-                <Select name="type" defaultValue="debit">
-                  <option value="debit">Debit</option>
-                  <option value="credit">Credit</option>
-                </Select>
-              </Field>
-              <Field label="Amount" required>
-                <input name="amount" type="number" min="1" required placeholder="0" className={fieldClass} />
-              </Field>
-              <Field label="Narration" required>
-                <input name="narration" required placeholder="What this entry is for" className={fieldClass} />
-              </Field>
-              <Field label="Reason" required>
-                <input name="reason" required placeholder="Why this correction is needed" className={fieldClass} />
-              </Field>
-            </div>
-            <div className="mt-5 flex justify-end">
-              <button type="submit" className={orangeButtonClass}>Review override</button>
-            </div>
-          </form>
         </>
       ) : null}
       {pendingDelete ? (
@@ -253,18 +178,6 @@ export default function PlatformControls() {
           </div>
         </div>
       ) : null}
-      {pendingOverride ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div role="dialog" aria-modal="true" className="w-full max-w-md rounded-2xl border border-[#E6EDF5] bg-white p-6 shadow-lg">
-            <h2 className="text-lg font-semibold text-[#16324F]">Confirm ledger override</h2>
-            <p className="mt-2 text-sm text-[#7B8794]">This correction is written to the client ledger and kept in the audit log.</p>
-            <div className="mt-5 flex justify-end gap-3">
-              <button type="button" className={outlineButtonClass} onClick={() => setPendingOverride(null)}>Cancel</button>
-              <button type="button" className={orangeButtonClass} onClick={() => void confirmOverride()}>Confirm</button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -290,45 +203,11 @@ function SectionHeading({ index, icon, title, subtitle }: { index: string; icon:
   );
 }
 
-function Field({ label, required = false, className = "", children }: { label: string; required?: boolean; className?: string; children: ReactNode }) {
-  return (
-    <label className={`block text-sm ${className}`}>
-      <span className="mb-1.5 block text-sm font-medium text-[#1B3C6C]">
-        {label}
-        {required ? <span className="text-[#F97316]"> *</span> : null}
-      </span>
-      {children}
-    </label>
-  );
-}
-
-function Select({ children, className = "", ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <span className="relative block">
-      <select {...props} className={`${fieldClass} appearance-none pr-10! ${className}`}>
-        {children}
-      </select>
-      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[#8B95A5]">
-        <ChevronDown />
-      </span>
-    </span>
-  );
-}
-
 function Icon({ children }: { children: ReactNode }) {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
       {children}
     </svg>
-  );
-}
-
-function LinkIcon() {
-  return (
-    <Icon>
-      <path d="M10 14a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1" strokeLinecap="round" />
-      <path d="M14 10a5 5 0 0 0-7.1-.1l-2 2a5 5 0 0 0 7.1 7.1l1.1-1.1" strokeLinecap="round" />
-    </Icon>
   );
 }
 
@@ -343,19 +222,3 @@ function GridIcon() {
   );
 }
 
-function ListIcon() {
-  return (
-    <Icon>
-      <path d="M8 7h11M8 12h11M8 17h11" strokeLinecap="round" />
-      <path d="M4 7h.01M4 12h.01M4 17h.01" strokeLinecap="round" />
-    </Icon>
-  );
-}
-
-function ChevronDown() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="m7 10 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}

@@ -10,6 +10,7 @@ router.get("/overview", admin.overview);
 router.get("/command", admin.command);
 router.get("/clients", admin.clients);
 router.post("/clients", admin.createClient);
+router.post("/kra/status", admin.kraLookup);
 router.get("/clients/:code", admin.client);
 router.patch("/clients/:code", admin.updateClient);
 router.post("/clients/:code/password", admin.resetClientPassword);

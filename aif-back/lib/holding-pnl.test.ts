@@ -55,14 +55,18 @@ test("one full year is measured from the holding date", () => {
   assert.equal(plusOneYear("2024-02-29"), "2025-02-28");
 });
 
-test("2026 profit uses the newest completed allotment NAV and leaves out holdings inside their first year", () => {
+test("current profit is current NAV minus each purchase NAV after one year", () => {
   const lots = [
-    { identifier: "INF2KLC22021", pan: "BNAPA9443F", allotmentDate: "2020-01-30", quantity: 45, costNav: 100000 },
-    { identifier: "INF2KLC22021", pan: "BNAPA9443F", allotmentDate: "2021-05-28", quantity: 68, costNav: 100001 },
-    { identifier: "INF2KLC22021", pan: "BNAPA9443F", allotmentDate: "2022-05-28", quantity: 30, costNav: 100002 },
-    { identifier: "INF2KLC22021", pan: "BNAPA9443F", allotmentDate: "2026-01-30", quantity: 75, costNav: 100003 },
-    { identifier: "INF2KLC22021", pan: "BNAPA9443F", allotmentDate: "2026-04-28", quantity: 68, costNav: 100002 },
+    { identifier: "INF2KLC22021", allotmentDate: "2021-01-10", quantity: 50, costNav: 100 },
+    { identifier: "INF2KLC22021", allotmentDate: "2022-05-15", quantity: 40, costNav: 101 },
+    { identifier: "INF2KLC22021", allotmentDate: "2023-05-16", quantity: 30, costNav: 102 },
+    { identifier: "INF2KLC22021", allotmentDate: "2024-05-17", quantity: 20, costNav: 103 },
+    { identifier: "INF2KLC22021", allotmentDate: "2025-05-18", quantity: 0, costNav: 104 },
+    { identifier: "INF2KLC22021", allotmentDate: "2026-05-19", quantity: 10, costNav: 105 },
   ];
-  const currentNav = 100001;
-  assert.equal(eligiblePnl(lots, currentNav, "2026-10-13"), 45 * 100002 - 45 * currentNav + 68 * 100002 - 68 * currentNav + 30 * 100002 - 30 * currentNav);
+  const currentNav = 105;
+  assert.equal(
+    eligiblePnl(lots, currentNav, "2026-10-14"),
+    50 * currentNav - 50 * 100 + 40 * currentNav - 40 * 101 + 30 * currentNav - 30 * 102 + 20 * currentNav - 20 * 103,
+  );
 });

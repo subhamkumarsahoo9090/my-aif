@@ -61,25 +61,15 @@ export function navAsOf(points: NavMark[], asOf: string) {
   return chosen;
 }
 
-export function referenceNav(lots: HoldingIdentity[], asOf: string) {
-  const eligible = lots
-    .filter((lot) => {
-      const date = lot.allotmentDate?.trim() ?? "";
-      return Boolean(date) && date <= asOf && completedOneYear(date, asOf) && lot.costNav != null && Number.isFinite(lot.costNav);
-    })
-    .sort((left, right) => (left.allotmentDate ?? "").localeCompare(right.allotmentDate ?? ""));
-  return eligible.length === 0 ? null : eligible[eligible.length - 1].costNav ?? null;
-}
-
-export function lotPnl(lot: HoldingIdentity, currentNav: number, reference: number | null, asOf: string) {
+export function lotPnl(lot: HoldingIdentity, currentNav: number, asOf: string) {
   const date = lot.allotmentDate?.trim() ?? "";
-  if (!date || date > asOf || !completedOneYear(date, asOf) || reference == null) return 0;
-  return money(money(lot.quantity * reference) - money(lot.quantity * currentNav));
+  const purchase = lot.costNav;
+  if (!date || date > asOf || !completedOneYear(date, asOf) || purchase == null || !Number.isFinite(purchase)) return 0;
+  return money(money(lot.quantity * currentNav) - money(lot.quantity * purchase));
 }
 
 export function eligiblePnl(lots: HoldingIdentity[], currentNav: number, asOf: string) {
-  const reference = referenceNav(lots, asOf);
-  return money(lots.reduce((sum, lot) => sum + lotPnl(lot, currentNav, reference, asOf), 0));
+  return money(lots.reduce((sum, lot) => sum + lotPnl(lot, currentNav, asOf), 0));
 }
 
 export function planHoldingImport(existing: HoldingIdentity[], incoming: HoldingIdentity[], currentNav: number | null): ImportPlan[] {

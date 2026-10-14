@@ -476,7 +476,7 @@ function adminBanner(pathname: string, role: string) {
   if (pathname.startsWith("/admin/platform")) {
     return {
       title: "Platform controls",
-      description: "KRA connection, the security master, and corrected ledger entries.",
+      description: "Security master for holdings.",
     };
   }
   if (pathname.startsWith("/admin/interview")) {

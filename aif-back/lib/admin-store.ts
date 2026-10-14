@@ -184,6 +184,7 @@ const kraSettings = {
   token: "kra-demo-token",
   timeoutSeconds: 30,
 };
+let lastKraCheck = "";
 const scheduleRules: Array<{
   id: string;
   frequency: "daily" | "weekly" | "monthly";
@@ -280,6 +281,7 @@ async function persistPlatform() {
       sessions,
       roleAccess,
       kra: { ...kraSettings },
+      lastKraCheck,
       schedules: scheduleRules,
       navEntries,
     },
@@ -357,6 +359,7 @@ async function hydrateAdmin() {
   if (state.kra && typeof state.kra === "object") {
     Object.assign(kraSettings, state.kra);
   }
+  lastKraCheck = typeof state.lastKraCheck === "string" ? state.lastKraCheck : "";
   const savedAccess = state.roleAccess as typeof roleAccess | undefined;
   if (savedAccess?.admin) Object.assign(roleAccess.admin, savedAccess.admin);
   if (savedAccess?.superadmin) Object.assign(roleAccess.superadmin, savedAccess.superadmin);
@@ -525,6 +528,7 @@ export async function clientRecord(code: string) {
   if (!portal) return null;
   return {
     portal,
+    currentNav: await currentNav(),
     incomplete: isProfileIncomplete(portal.profile),
     documents: [
       { name: "PAN", status: portal.profile.pan ? "On file" : "Missing" },
@@ -564,6 +568,7 @@ export async function saveClient(
     bank: PortalData["profile"]["banks"][number];
     status: ClientStatus;
     kra: boolean;
+    fatca?: boolean;
   },
 ) {
   const password = "123456";
@@ -1287,6 +1292,17 @@ export async function saveNav(actor: AdminUser, input: { date: string; nav: numb
     detail: `${entry.date} · ${entry.nav}`,
   });
   return { entry, latest: sortedNav()[0] };
+}
+
+export async function readLastKraCheck() {
+  await ensureAdmin();
+  return lastKraCheck;
+}
+
+export async function saveLastKraCheck(day: string) {
+  await ensureAdmin();
+  lastKraCheck = day;
+  await persistPlatform();
 }
 
 export async function platformState() {

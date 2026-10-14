@@ -8,6 +8,7 @@ export const overview = controller((req) => admin.overview(req.query ?? {}));
 export const command = controller(() => admin.command());
 export const clients = controller(() => admin.clients());
 export const createClient = controller((req) => admin.createClient(req.body));
+export const kraLookup = controller((req) => admin.kraLookup(req.body ?? {}));
 export const client = controller((req) => admin.client(req.params.code));
 export const updateClient = controller((req) => admin.updateClient(req.params.code, req.body));
 export const resetClientPassword = controller((req) => admin.resetClientPassword(req.params.code, req.body ?? {}));

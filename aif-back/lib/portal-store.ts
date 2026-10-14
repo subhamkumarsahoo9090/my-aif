@@ -1,7 +1,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { getDb } from "./mongo.js";
 import { identifierMatches } from "./identifier.js";
-import { lotPnl, money, navAsOf, normalizeQuantity, planHoldingImport, referenceNav, type NavMark } from "./holding-pnl.js";
+import { lotPnl, money, navAsOf, normalizeQuantity, planHoldingImport, type NavMark } from "./holding-pnl.js";
 import type {
   BankAccount,
   Holding,
@@ -505,10 +505,9 @@ function presentPortal(portal: PortalData, points: NavMark[]): PortalData {
     const costNav = saved ?? (row.averageCost > 0 ? row.averageCost : undefined);
     return { ...row, ...(costNav == null ? {} : { costNav }) };
   });
-  const reference = referenceNav(priced, asOf);
   const holdings = priced.map((row) => {
     const marketValue = money(row.quantity * current);
-    return { ...row, marketValue, pnl: lotPnl(row, current, reference, asOf) };
+    return { ...row, marketValue, pnl: lotPnl(row, current, asOf) };
   });
   const next: PortalData = { ...portal, holdings, metrics: { ...portal.metrics } };
   refreshMetrics(next);
@@ -546,6 +545,7 @@ export async function createClient(input: {
   bank: BankAccount;
   status: PortalData["profile"]["status"];
   kra: boolean;
+  fatca?: boolean;
   password: string;
 }) {
   await ready();
@@ -593,7 +593,7 @@ export async function createClient(input: {
         share: nominee.share?.trim() ?? "",
       })),
       kra: input.kra,
-      fatca: false,
+      fatca: input.fatca === true,
       status: input.status,
       bankName: input.bank.bankName.trim(),
       accountNumber: input.bank.accountNumber.trim(),
@@ -626,6 +626,33 @@ export async function updateClientProfile(
   account.portal.profile = merged.profile;
   await persistInvestor(clientCode);
   return account.portal;
+}
+
+export async function pendingKraClients() {
+  await ready();
+  return [...accounts.values()].flatMap((account) => {
+    const profile = account.portal.profile;
+    if ((profile.kra && profile.fatca) || !profile.pan.trim() || !profile.dateOfBirth.trim()) return [];
+    return [{ code: profile.tradingCode, pan: profile.pan, dob: profile.dateOfBirth }];
+  });
+}
+
+export async function setInvestorKra(clientCode: string, kra: boolean, fatca = false) {
+  await ready();
+  const account = accounts.get(clientCode);
+  if (!account) return false;
+  let changed = false;
+  if (kra && !account.portal.profile.kra) {
+    account.portal.profile.kra = true;
+    changed = true;
+  }
+  if (fatca && !account.portal.profile.fatca) {
+    account.portal.profile.fatca = true;
+    changed = true;
+  }
+  if (!changed) return false;
+  await persistInvestor(clientCode);
+  return true;
 }
 
 export async function importLedgerRows(

@@ -6,6 +6,7 @@ import adminRoutes from "./routes/admin.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import { bindRequestContext } from "./middleware/context.js";
 import { corsMiddleware } from "./middleware/cors.js";
+import { startDailyKraCheck } from "./lib/kra-refresh.js";
 import portalRoutes from "./routes/portal.routes.js";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env"), quiet: true });
@@ -37,6 +38,7 @@ if (!process.env.VERCEL) {
   const port = Number(process.env.PORT || 4000);
   app.listen(port, () => {
     console.log(`AIF API listening on http://localhost:${port}`);
+    startDailyKraCheck();
   });
 }
 

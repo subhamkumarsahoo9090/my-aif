@@ -78,6 +78,7 @@ export const api = {
     nav: route("/api/admin/nav"),
     audit: route("/api/admin/audit"),
     platform: route("/api/admin/platform"),
+    kraStatus: route("/api/admin/kra/status"),
     ifsc(code) {
       return route(`/api/admin/ifsc/${encodeURIComponent(code)}`);
     },

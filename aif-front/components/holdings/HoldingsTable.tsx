@@ -20,8 +20,16 @@ export default function HoldingsTable() {
     api.portal.holdings,
   );
 
-  const allotment = Boolean(data?.rows?.some((row) => row.allotmentDate || row.pan));
-  const merged = (data?.rows ?? []).reduce(
+  const rows = [...(data?.rows ?? [])].sort((left, right) => {
+    const earlier = left.allotmentDate ?? "";
+    const later = right.allotmentDate ?? "";
+    if (earlier === later) return 0;
+    if (!earlier) return 1;
+    if (!later) return -1;
+    return earlier.localeCompare(later);
+  });
+  const allotment = rows.some((row) => row.allotmentDate || row.pan);
+  const merged = rows.reduce(
     (sum, row) => ({
       units: sum.units + row.quantity,
       value: sum.value + row.marketValue,
@@ -45,15 +53,15 @@ export default function HoldingsTable() {
             <div>
               <h2 className="text-[15px] font-semibold text-[#16324F]">Holdings</h2>
               <p className="text-xs text-[#7B8794]">
-                {data.rows.length === 0
+                {rows.length === 0
                   ? `No units allotted for ${data.clientCode}`
                   : data.latestNav != null && !allotment
-                    ? `${data.rows.length} holding${data.rows.length === 1 ? "" : "s"} · latest NAV ${formatNav(data.latestNav)}`
-                    : `${data.rows.length} allotment${data.rows.length === 1 ? "" : "s"} for ${data.clientCode}`}
+                    ? `${rows.length} holding${rows.length === 1 ? "" : "s"} · latest NAV ${formatNav(data.latestNav)}`
+                    : `${rows.length} allotment${rows.length === 1 ? "" : "s"} for ${data.clientCode}`}
               </p>
             </div>
           </div>
-          {data.rows.length === 0 ? (
+          {rows.length === 0 ? (
             <p className="m-5 rounded-xl border border-dashed border-[#E3E8EF] px-3 py-6 text-center text-sm text-[#7B8794]">
               No holdings yet. When units are allotted to your account, they will be listed here.
             </p>
@@ -86,7 +94,7 @@ export default function HoldingsTable() {
                   )}
                 </thead>
                 <tbody>
-                  {data.rows.map((row, index) => {
+                  {rows.map((row, index) => {
                     const rowClass = "dash-row border-b border-[#EEF2F6] last:border-0";
                     const rowStyle = { animationDelay: `${120 + Math.min(index, 14) * 40}ms` };
                     if (row.allotmentDate || row.pan) {

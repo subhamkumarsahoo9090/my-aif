@@ -111,7 +111,7 @@ export default function ClientDashboard() {
                 <div>
                   <p className="text-xs text-[#7B8794]">Unrealized</p>
                   <CountedPnl value={data.metrics.unrealizedPnl} />
-                  <p className="mt-1 text-xs text-[#7B8794]">After one year, units at the newest completed NAV minus current value</p>
+                  <p className="mt-1 text-xs text-[#7B8794]">After one year, current value minus that allotment’s purchase NAV</p>
                 </div>
               </div>
               </div>

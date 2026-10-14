@@ -61,6 +61,8 @@ export default function ClientForm() {
   const [ckycNo, setCkycNo] = useState("");
   const [status, setStatus] = useState("active");
   const [kra, setKra] = useState(false);
+  const [fatca, setFatca] = useState(false);
+  const [kraNote, setKraNote] = useState<string | null>(null);
   const [nominees, setNominees] = useState<NomineeDraft[]>([emptyNominee()]);
   const [bank, setBank] = useState<BankAccount>(emptyBank());
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -97,6 +99,8 @@ export default function ClientForm() {
     setCkycNo("");
     setStatus("active");
     setKra(false);
+    setFatca(false);
+    setKraNote(null);
     setNominees([emptyNominee()]);
     setBank(emptyBank());
     setErrors({});
@@ -104,6 +108,49 @@ export default function ClientForm() {
     setCreatedCode(null);
     setBranchNote(null);
   }
+
+  useEffect(() => {
+    const cleanPan = pan.trim().toUpperCase();
+    if (!/^[A-Z]{5}\d{4}[A-Z]$/.test(cleanPan) || !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) {
+      setKraNote(null);
+      return;
+    }
+    let active = true;
+    setKra(false);
+    setFatca(false);
+    setKraNote("Checking KRA…");
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const response = await apiFetch(api.admin.kraStatus, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pan: cleanPan, dob: dateOfBirth }),
+          });
+          const data = (await response.json().catch(() => ({}))) as { kra?: boolean; fatca?: boolean; message?: string };
+          if (!active) return;
+          if (!response.ok) {
+            setKra(false);
+            setFatca(false);
+            setKraNote(data.message ?? "KRA could not be checked.");
+            return;
+          }
+          setKra(data.kra === true);
+          setFatca(data.fatca === true);
+          setKraNote(data.kra === true ? "KRA verified." : "KRA is not verified for this PAN.");
+        } catch {
+          if (!active) return;
+          setKra(false);
+          setFatca(false);
+          setKraNote("KRA could not be checked.");
+        }
+      })();
+    }, 400);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [pan, dateOfBirth]);
 
   useEffect(() => {
     const ifsc = bank.ifsccode.trim().toUpperCase();
@@ -460,9 +507,14 @@ export default function ClientForm() {
         <SectionHeading index="4" icon={<ShieldIcon />} title="Compliance" subtitle="KRA verification" />
         <div className="flex flex-wrap items-end gap-6">
           <label className="mb-2.5 flex items-center gap-2 text-sm font-medium text-[#1B3C6C]">
-            <input type="checkbox" checked={kra} onChange={(event) => setKra(event.target.checked)} className="h-4 w-4 accent-[#F97316]" />
+            <input type="checkbox" checked={kra} disabled className="h-4 w-4 accent-[#F97316]" />
             KRA verified
           </label>
+          <label className="mb-2.5 flex items-center gap-2 text-sm font-medium text-[#1B3C6C]">
+            <input type="checkbox" checked={fatca} disabled className="h-4 w-4 accent-[#F97316]" />
+            FATCA complete
+          </label>
+          <p className="mb-2.5 text-xs text-[#7B8794]">{kraNote ?? "Filled after PAN and date of birth are entered."}</p>
         </div>
         {formError ? <p className={`mt-4 ${errorClass}`}>{formError}</p> : null}
         {createdCode ? (

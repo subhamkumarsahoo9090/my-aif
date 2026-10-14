@@ -41,6 +41,7 @@ import { authorizeAdmin } from "../lib/admin-guard.js";
 import { openAdminSession, readAdminSession } from "../lib/session.js";
 import { readCreateClientBody } from "../lib/client-validation.js";
 import { passwordError } from "../lib/password.js";
+import { kraStatus } from "../lib/kra.js";
 import { getPortal, listHoldingRows, listLedgerRows, listSecurities, updatePassword } from "../lib/portal-store.js";
 import { statementDownloadName } from "../lib/pdf.js";
 import { renderStatement } from "../lib/statement-pdf.js";
@@ -165,9 +166,21 @@ export async function createClient(body) {
   const parsed = readCreateClientBody(body);
   if (!parsed.ok) return fail(parsed.message, 400);
 
-  const result = await saveClient(user.name, parsed.value);
+  const lookedUp = await kraStatus(parsed.value.pan, parsed.value.dateOfBirth);
+  const result = await saveClient(user.name, lookedUp == null ? parsed.value : { ...parsed.value, kra: lookedUp.kra, fatca: lookedUp.fatca });
   if ("error" in result && result.error) return fail(result.error, 409);
   return ok(result);
+}
+
+export async function kraLookup(body) {
+  const { blocked } = await adminOf("admin", "clients");
+  if (blocked) return blocked;
+  const pan = text(body, "pan");
+  const dob = text(body, "dob") || text(body, "dateOfBirth");
+  if (!pan || !dob) return fail("Enter the PAN and date of birth.", 400);
+  const compliance = await kraStatus(pan, dob);
+  if (compliance == null) return fail("KRA could not be checked. Try again.", 502);
+  return ok(compliance);
 }
 
 export async function client(code) {
@@ -194,6 +207,23 @@ export async function updateClient(code, body) {
   const { blocked, user } = await adminOf("admin", "clients");
   if (blocked) return blocked;
   if (!body || typeof body !== "object") return fail("Enter the client details.", 400);
+
+  const existing = await getPortal(code);
+  if (!existing) return fail("Client not found.", 404);
+  const nextPan = optionalText(body, "pan")?.toUpperCase() ?? existing.profile.pan;
+  const nextDob = optionalText(body, "dateOfBirth") ?? existing.profile.dateOfBirth;
+  const identityChanged =
+    (optionalText(body, "pan") != null && nextPan !== existing.profile.pan) ||
+    (optionalText(body, "dateOfBirth") != null && nextDob !== existing.profile.dateOfBirth);
+  let kra = typeof body.kra === "boolean" ? body.kra : undefined;
+  let fatca = typeof body.fatca === "boolean" ? body.fatca : undefined;
+  if (identityChanged) {
+    const lookedUp = await kraStatus(nextPan, nextDob);
+    if (lookedUp != null) {
+      kra = lookedUp.kra;
+      fatca = lookedUp.fatca;
+    }
+  }
 
   const status = body.status === "active" || body.status === "inactive" ? body.status : undefined;
   const nominees = readNominees(body);
@@ -224,8 +254,8 @@ export async function updateClient(code, body) {
     ifsc: optionalText(body, "ifsc")?.toUpperCase(),
     banks: bank ? [bank] : undefined,
     status,
-    kra: typeof body.kra === "boolean" ? body.kra : undefined,
-    fatca: typeof body.fatca === "boolean" ? body.fatca : undefined,
+    kra,
+    fatca,
   });
   if (!portal) return fail("Client not found.", 404);
   return ok({ portal });
