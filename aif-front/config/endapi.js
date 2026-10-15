@@ -76,6 +76,9 @@ export const api = {
       return route(`/api/admin/reports/${encodeURIComponent(code)}/file?${params}`);
     },
     nav: route("/api/admin/nav"),
+    navEntry(id) {
+      return route(`/api/admin/nav/${encodeURIComponent(id)}`);
+    },
     audit: route("/api/admin/audit"),
     platform: route("/api/admin/platform"),
     kraStatus: route("/api/admin/kra/status"),

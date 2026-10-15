@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { LuPencil } from "react-icons/lu";
 import LoadError from "@/components/ui/LoadError";
 import Skeleton from "@/components/ui/Skeleton";
 import DateField from "@/components/ui/DateField";
@@ -27,6 +28,12 @@ type NavPage = {
   series: Array<{ date: string; label: string; nav: number }>;
 };
 
+type EditForm = {
+  id: string;
+  date: string;
+  nav: string;
+};
+
 function todayIso() {
   const now = new Date();
   const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -40,6 +47,8 @@ export default function NavPanel() {
   const { data, status, reload } = usePortalResource<NavPage>(`${api.admin.nav}?page=${page}`);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [editing, setEditing] = useState<EditForm | null>(null);
+  const [editPending, setEditPending] = useState(false);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -64,6 +73,32 @@ export default function NavPanel() {
     setMessage("NAV saved. Client holdings now use this value when it is the latest date.");
     if (page !== 1) setPage(1);
     else reload();
+  }
+
+  function startEdit(entry: NavEntry) {
+    setEditing({ id: entry.id, date: entry.date, nav: String(entry.nav) });
+    setMessage(null);
+  }
+
+  async function saveEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editing) return;
+    setEditPending(true);
+    setMessage(null);
+    const response = await apiFetch(api.admin.navEntry(editing.id), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ date: editing.date, nav: Number(editing.nav) }),
+    });
+    const payload = (await response.json().catch(() => ({}))) as { message?: string };
+    setEditPending(false);
+    if (!response.ok) {
+      setMessage(payload.message ?? "The NAV could not be updated.");
+      return;
+    }
+    setEditing(null);
+    setMessage("NAV updated. Client holdings use this value when it is the latest date.");
+    reload();
   }
 
   return (
@@ -126,6 +161,34 @@ export default function NavPanel() {
               )}
             </div>
           </div>
+          {editing ? (
+            <form onSubmit={(event) => void saveEdit(event)} className="grid gap-4 border-t border-[#E6EDF5] px-5 py-5 sm:grid-cols-2">
+              <label className="text-sm">
+                <span className="mb-1.5 block text-sm font-medium text-[#1B3C6C]">
+                  NAV date<span className="text-[#F97316]"> *</span>
+                </span>
+                <DateField required max={todayIso()} value={editing.date} onChange={(date) => setEditing({ ...editing, date })} className={`${fieldClass} pr-10!`} />
+              </label>
+              <label className="text-sm">
+                <span className="mb-1.5 block text-sm font-medium text-[#1B3C6C]">
+                  NAV<span className="text-[#F97316]"> *</span>
+                </span>
+                <input
+                  type="number"
+                  min="0.0001"
+                  step="0.0001"
+                  required
+                  value={editing.nav}
+                  onChange={(event) => setEditing({ ...editing, nav: event.target.value })}
+                  className={fieldClass}
+                />
+              </label>
+              <div className="flex items-center justify-end gap-3 sm:col-span-2">
+                <button type="button" className={outlineButtonClass} onClick={() => setEditing(null)}>Cancel</button>
+                <button type="submit" className={orangeButtonClass} disabled={editPending}>{editPending ? "Saving..." : "Save changes"}</button>
+              </div>
+            </form>
+          ) : null}
           {data.entries.length === 0 ? (
             <p className="m-5 rounded-xl border border-dashed border-[#E3E8EF] px-3 py-6 text-center text-sm text-[#7B8794]">NAV history will appear here.</p>
           ) : (
@@ -136,6 +199,7 @@ export default function NavPanel() {
                     <th className="px-5 py-3 font-medium">Date</th>
                     <th className="px-5 py-3 text-right font-medium">NAV</th>
                     <th className="px-5 py-3 font-medium">Added by</th>
+                    <th className="px-5 py-3 font-medium"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -151,6 +215,17 @@ export default function NavPanel() {
                       </td>
                       <td className="whitespace-nowrap px-5 py-3 text-right font-medium tabular-nums text-[#16324F]">{formatNav(entry.nav)}</td>
                       <td className="px-5 py-3 text-[#3D4C5E]">{entry.addedBy}</td>
+                      <td className="px-5 py-3 text-right">
+                        <button
+                          type="button"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#E7F0FF] text-[#1B3C6C] transition hover:bg-[#D5E4F8]"
+                          aria-label={`Edit NAV on ${formatDate(entry.date)}`}
+                          title="Edit"
+                          onClick={() => startEdit(entry)}
+                        >
+                          <LuPencil className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

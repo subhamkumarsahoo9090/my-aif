@@ -18,7 +18,6 @@ const links = [
   { href: "/admin/nav", label: "NAV", module: "nav", icon: "chart" },
   { href: "/admin/users", label: "Staff directory", module: "users", icon: "users" },
   { href: "/admin/roles", label: "Role matrix", module: "users", icon: "shield" },
-  { href: "/admin/audit", label: "Audit trail", module: "audit", icon: "clock" },
   { href: "/admin/schedules", label: "Schedules", module: "schedules", icon: "calendar" },
   { href: "/admin/platform", label: "Platform controls", module: "platform", icon: "settings" },
 ] as const;
@@ -253,12 +252,6 @@ function NavIcon({ name }: { name: (typeof links)[number]["icon"] }) {
       </>
     ),
     shield: <path d="M12 3.5 19 6.2v5.3c0 4-2.8 6.8-7 8.5-4.2-1.7-7-4.5-7-8.5V6.2L12 3.5Z" strokeLinejoin="round" />,
-    clock: (
-      <>
-        <circle cx="12" cy="12" r="8" />
-        <path d="M12 8v4.5l3 2" strokeLinecap="round" />
-      </>
-    ),
     calendar: (
       <>
         <rect x="4" y="5" width="16" height="15" rx="2" />

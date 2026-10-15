@@ -1294,6 +1294,27 @@ export async function saveNav(actor: AdminUser, input: { date: string; nav: numb
   return { entry, latest: sortedNav()[0] };
 }
 
+export async function updateNav(actor: AdminUser, id: string, input: { date: string; nav: number }) {
+  await ensureAdmin();
+  const entry = navEntries.find((item) => item.id === id);
+  if (!entry) return { error: "That NAV entry was not found." as const };
+  const date = input.date.trim();
+  if (!validNavDate(date)) return { error: "Enter a valid NAV date." as const };
+  if (date > todayIso()) return { error: "NAV date cannot be in the future." as const };
+  if (!Number.isFinite(input.nav) || input.nav <= 0) return { error: "Enter a NAV greater than zero." as const };
+  entry.date = date;
+  entry.nav = Math.round(input.nav * 10000) / 10000;
+  await recordAudit({
+    actor: actor.name,
+    userId: actor.id,
+    action: "NAV updated",
+    targetEntity: "nav",
+    entityId: entry.id,
+    detail: `${entry.date} · ${entry.nav}`,
+  });
+  return { entry, latest: sortedNav()[0] };
+}
+
 export async function readLastKraCheck() {
   await ensureAdmin();
   return lastKraCheck;

@@ -43,6 +43,7 @@ export async function reportFile(req, res, next) {
 }
 export const navHistory = controller((req) => admin.navHistory(req.query ?? {}));
 export const addNav = controller((req) => admin.addNav(req.body ?? {}));
+export const updateNav = controller((req) => admin.updateNavEntry(req.params.id, req.body ?? {}));
 export const audit = controller((req) => admin.audit(req.query ?? {}));
 export const platform = controller(() => admin.platform());
 export const platformAction = controller((req) => admin.platformAction(req.body ?? {}));

@@ -36,6 +36,7 @@ import {
   updateStaff,
   listNav,
   saveNav,
+  updateNav,
 } from "../lib/admin-store.js";
 import { authorizeAdmin } from "../lib/admin-guard.js";
 import { openAdminSession, readAdminSession } from "../lib/session.js";
@@ -535,6 +536,17 @@ export async function addNav(body) {
   const nav = Number(body?.nav);
   const result = await saveNav(user, { date, nav });
   if ("error" in result && result.error) return fail(result.error, 400);
+  return ok(result);
+}
+
+export async function updateNavEntry(id, body) {
+  const { blocked, user } = await adminOf("admin", "nav");
+  if (blocked) return blocked;
+  const entryId = typeof id === "string" ? id : "";
+  const date = typeof body?.date === "string" ? body.date : "";
+  const nav = Number(body?.nav);
+  const result = await updateNav(user, entryId, { date, nav });
+  if ("error" in result && result.error) return fail(result.error, result.error.includes("not found") ? 404 : 400);
   return ok(result);
 }
 

@@ -31,6 +31,7 @@ router.post("/reports", admin.createReport);
 router.get("/reports/:code/file", admin.reportFile);
 router.get("/nav", admin.navHistory);
 router.post("/nav", admin.addNav);
+router.patch("/nav/:id", admin.updateNav);
 router.get("/audit", admin.audit);
 router.get("/platform", admin.platform);
 router.post("/platform", admin.platformAction);
